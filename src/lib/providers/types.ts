@@ -1,0 +1,62 @@
+import type { ResourceType } from '../types/dto';
+
+export type ProviderName = 'fortnox' | 'visma' | 'briox' | 'bokio' | 'bjornlunden';
+
+export interface RateLimitConfig {
+  maxRequests: number;
+  windowMs: number;
+}
+
+export interface OAuthConfig {
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+}
+
+export interface TokenResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+}
+
+export interface ResourceConfig {
+  listEndpoint: string;
+  detailEndpoint: string;
+  idField: string;
+  mapper: (raw: Record<string, unknown>) => unknown;
+  singleton?: boolean;
+}
+
+export interface FortnoxResourceConfig extends ResourceConfig {
+  listKey: string;
+  detailKey: string;
+  supportsLastModified: boolean;
+  /** Build the detail path from a composite resourceId (e.g. voucher series+number) */
+  resolveDetailPath?: (resourceId: string, query?: Record<string, string>) => string;
+  /** Whether this resource supports entry hydration via detail fetches */
+  supportsEntryHydration?: boolean;
+}
+
+export interface VismaResourceConfig extends ResourceConfig {
+  supportsModifiedFilter: boolean;
+  modifiedField?: string;
+}
+
+export interface BrioxResourceConfig extends ResourceConfig {
+  /** The key inside `data` that contains the array of items (e.g. "invoices", "customers") */
+  listKey: string;
+  supportsModifiedFilter: boolean;
+  /** Whether this endpoint is scoped by financial year (e.g. /journal/{year}) */
+  yearScoped?: boolean;
+}
+
+export interface BokioResourceConfig extends ResourceConfig {
+  /** Whether this endpoint supports pagination (chart-of-accounts does not) */
+  paginated?: boolean;
+}
+
+export interface BjornLundenResourceConfig extends ResourceConfig {
+  /** Whether this endpoint supports pagination */
+  paginated?: boolean;
+}

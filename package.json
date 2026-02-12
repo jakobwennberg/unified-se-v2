@@ -12,6 +12,8 @@
     "clean": "rm -rf .next .turbo"
   },
   "dependencies": {
+    "@langchain/aws": "^1.2.3",
+    "@langchain/core": "^1.1.24",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.49.1",
     "@tailwindcss/postcss": "^4.1.18",
@@ -22,7 +24,8 @@
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwind-merge": "^2.6.0"
+    "tailwind-merge": "^2.6.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

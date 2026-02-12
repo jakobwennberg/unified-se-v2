@@ -26,7 +26,7 @@ function OAuthCallbackContent() {
       return;
     }
 
-    // State format: provider:consentId
+    // State format: provider:consentId or provider:consentId:otc
     const separatorIndex = state.indexOf(':');
     if (separatorIndex === -1) {
       setError('Invalid state parameter');
@@ -35,7 +35,10 @@ function OAuthCallbackContent() {
     }
 
     const provider = state.substring(0, separatorIndex);
-    const cId = state.substring(separatorIndex + 1);
+    const rest = state.substring(separatorIndex + 1);
+    const secondColon = rest.indexOf(':');
+    const cId = secondColon === -1 ? rest : rest.substring(0, secondColon);
+    const otc = secondColon === -1 ? undefined : rest.substring(secondColon + 1);
     setConsentId(cId);
 
     async function exchangeCode() {
@@ -43,7 +46,7 @@ function OAuthCallbackContent() {
         const res = await fetch(`/api/v1/auth/${provider}/callback`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, consentId: cId }),
+          body: JSON.stringify({ code, consentId: cId, otc }),
         });
 
         if (!res.ok) {
@@ -101,13 +104,8 @@ function OAuthCallbackContent() {
             <h2 className="text-xl font-semibold">Connected!</h2>
             <p className="text-sm text-muted-foreground">
               Your accounting system has been connected successfully.
+              You can safely close this page.
             </p>
-            <a
-              href={`/customer/consent/${consentId}`}
-              className="inline-block rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
-            >
-              View Connection Status
-            </a>
           </div>
         )}
       </div>

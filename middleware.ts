@@ -48,6 +48,11 @@ export async function middleware(request: NextRequest) {
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
+  if (!user && request.nextUrl.pathname.startsWith('/generate-company')) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
+  }
 
   // Redirect authenticated users away from auth pages
   if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup')) {

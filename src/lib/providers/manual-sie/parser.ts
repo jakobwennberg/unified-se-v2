@@ -384,13 +384,32 @@ export function decodeSIEBuffer(buffer: Buffer): string {
     return buffer.toString('utf8').slice(1);
   }
 
-  // Check for #KSUMMA or #FLAGGA to detect encoding hints in raw bytes
-  // Look for high bytes that indicate CP437 vs Latin-1
+  // Check for #FORMAT PCUTF8 header in the raw bytes (all ASCII, safe to scan)
+  const headerSlice = buffer.subarray(0, Math.min(buffer.length, 512)).toString('ascii');
+  if (/^#FORMAT\s+PCUTF8/m.test(headerSlice)) {
+    return buffer.toString('utf8');
+  }
+
+  // Detect valid UTF-8 multi-byte sequences (common Swedish chars like å ä ö
+  // encode as 0xC3 followed by 0x80-0xBF in UTF-8)
+  let utf8MultiByte = false;
+  const checkLen = Math.min(buffer.length, 4096);
+  for (let i = 0; i < checkLen - 1; i++) {
+    const b = buffer[i]!;
+    if (b >= 0xC2 && b <= 0xDF && (buffer[i + 1]! & 0xC0) === 0x80) {
+      utf8MultiByte = true;
+      break;
+    }
+  }
+  if (utf8MultiByte) {
+    return buffer.toString('utf8');
+  }
+
+  // Check for high bytes that indicate CP437 vs Latin-1
   // CP437 Swedish: å=0x86, ä=0x84, ö=0x94
   // Latin-1 Swedish: å=0xE5, ä=0xE4, ö=0xF6
   let hasHighCp437 = false;
   let hasHighLatin1 = false;
-  const checkLen = Math.min(buffer.length, 4096);
   for (let i = 0; i < checkLen; i++) {
     const b = buffer[i];
     if (b === 0x84 || b === 0x86 || b === 0x94) hasHighCp437 = true;

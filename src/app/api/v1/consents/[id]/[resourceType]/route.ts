@@ -15,6 +15,7 @@ import { BokioClient } from '@/lib/providers/bokio/client';
 import { BjornLundenClient } from '@/lib/providers/bjornlunden/client';
 import { mapSieAccounts, mapSieJournals, mapSieCompanyInfo } from '@/lib/providers/manual-sie/mapper';
 import type { SIEParseResult } from '@/lib/providers/manual-sie/parser';
+import { getSyncedResources } from '@/lib/sync/db';
 
 const fortnoxClient = new FortnoxClient();
 const vismaClient = new VismaClient();
@@ -41,6 +42,23 @@ export async function GET(
     return NextResponse.json({ error: `Unknown resource type: ${resourceType}` }, { status: 400 });
   }
 
+  // Stored data path — read from synced_resources instead of live provider API
+  const url = new URL(request.url);
+  if (url.searchParams.get('source') === 'stored') {
+    const page = url.searchParams.get('page') ? Number(url.searchParams.get('page')) : 1;
+    const pageSize = url.searchParams.get('pageSize') ? Number(url.searchParams.get('pageSize')) : 100;
+    const result = await getSyncedResources(consentId, resourceType, {
+      page,
+      pageSize,
+      status: url.searchParams.get('status') ?? undefined,
+      dateFrom: url.searchParams.get('dateFrom') ?? undefined,
+      dateTo: url.searchParams.get('dateTo') ?? undefined,
+      counterpartyName: url.searchParams.get('counterpartyName') ?? undefined,
+      accountNumber: url.searchParams.get('accountNumber') ?? undefined,
+    });
+    return NextResponse.json(result);
+  }
+
   let resolved: ResolvedConsent;
   try {
     resolved = await resolveConsent(auth.tenantId, consentId);
@@ -51,7 +69,6 @@ export async function GET(
 
   const { consent, accessToken } = resolved;
   const provider = consent.provider as string;
-  const url = new URL(request.url);
 
   if (provider === 'fortnox') {
     const config = FORTNOX_RESOURCE_CONFIGS[resourceType as ResourceType];

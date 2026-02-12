@@ -49,6 +49,10 @@ export interface BrioxResourceConfig extends ResourceConfig {
   supportsModifiedFilter: boolean;
   /** Whether this endpoint is scoped by financial year (e.g. /journal/{year}) */
   yearScoped?: boolean;
+  /** Whether this resource supports entry hydration via detail fetches */
+  supportsEntryHydration?: boolean;
+  /** The key inside `data` for the detail response (e.g. "journal") */
+  detailKey?: string;
 }
 
 export interface BokioResourceConfig extends ResourceConfig {

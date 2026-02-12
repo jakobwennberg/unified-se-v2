@@ -46,8 +46,14 @@ export default function OnboardingPage() {
 
   const fetchConsent = useCallback(async () => {
     try {
-      const res = await fetch(`/api/v1/consents/${consentId}`);
-      if (!res.ok) throw new Error('Consent not found or invalid link');
+      const url = otcCode
+        ? `/api/v1/consents/${consentId}?otc=${encodeURIComponent(otcCode)}`
+        : `/api/v1/consents/${consentId}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Consent not found or invalid link');
+      }
       const data = await res.json();
       setConsent(data);
       if (data.status === 1) setDone(true);
@@ -56,7 +62,7 @@ export default function OnboardingPage() {
     } finally {
       setLoading(false);
     }
-  }, [consentId]);
+  }, [consentId, otcCode]);
 
   useEffect(() => {
     fetchConsent();
@@ -69,7 +75,10 @@ export default function OnboardingPage() {
 
     try {
       // Get the OAuth authorization URL from the gateway
-      const state = `${consent.provider}:${consentId}`;
+      // Encode OTC in state so it survives the OAuth redirect
+      const state = otcCode
+        ? `${consent.provider}:${consentId}:${otcCode}`
+        : `${consent.provider}:${consentId}`;
       const res = await fetch(
         `/api/v1/auth/${consent.provider}/url?state=${encodeURIComponent(state)}`,
       );
@@ -96,7 +105,7 @@ export default function OnboardingPage() {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: applicationToken.trim(), consentId }),
+          body: JSON.stringify({ code: applicationToken.trim(), consentId, otc: otcCode }),
         },
       );
 
@@ -127,6 +136,7 @@ export default function OnboardingPage() {
             code: blCompanyKey.trim(),
             consentId,
             companyId: blCompanyKey.trim(),
+            otc: otcCode,
           }),
         },
       );
@@ -158,6 +168,7 @@ export default function OnboardingPage() {
             code: bokioApiToken.trim(),
             consentId,
             companyId: bokioCompanyId.trim(),
+            otc: otcCode,
           }),
         },
       );

@@ -26,22 +26,56 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
   }
 
   const body = await request.json();
-  const { code, consentId } = body;
+  const { code, consentId, otc } = body;
   if (!code || !consentId) {
     return NextResponse.json({ error: 'code and consentId are required' }, { status: 400 });
   }
 
   const supabase = getServiceClient();
-  const auth = await authenticateRequest(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  // Verify the consent belongs to this tenant
-  const { data: consentRows } = await supabase
-    .from('consents')
-    .select('id, provider')
-    .eq('id', consentId)
-    .eq('tenant_id', auth.tenantId)
-    .limit(1);
+  // Try normal authentication first
+  const auth = await authenticateRequest(request);
+  let consentRows: { id: string; provider: string }[] | null = null;
+
+  if (auth) {
+    // Verify the consent belongs to this tenant
+    const { data } = await supabase
+      .from('consents')
+      .select('id, provider')
+      .eq('id', consentId)
+      .eq('tenant_id', auth.tenantId)
+      .limit(1);
+    consentRows = data;
+  } else if (otc) {
+    // Fallback: OTC-based access for onboarding flow
+    const { data: otcRows } = await supabase
+      .from('one_time_codes')
+      .select('consent_id, expires_at, used_at')
+      .eq('code', otc)
+      .eq('consent_id', consentId)
+      .limit(1);
+
+    if (!otcRows || otcRows.length === 0) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const otcRecord = otcRows[0]!;
+    if (otcRecord.used_at || new Date(otcRecord.expires_at) < new Date()) {
+      return NextResponse.json({ error: 'Link has expired' }, { status: 410 });
+    }
+
+    // OTC is valid — mark it as used
+    await supabase.from('one_time_codes').update({ used_at: new Date().toISOString() }).eq('code', otc);
+
+    const { data } = await supabase
+      .from('consents')
+      .select('id, provider')
+      .eq('id', consentId)
+      .limit(1);
+    consentRows = data;
+  } else {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   if (!consentRows || consentRows.length === 0) {
     return NextResponse.json({ error: 'Consent not found' }, { status: 404 });

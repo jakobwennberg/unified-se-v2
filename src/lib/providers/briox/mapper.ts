@@ -187,32 +187,39 @@ export function mapBrioxToSupplier(raw: Record<string, unknown>): SupplierDto {
 }
 
 export function mapBrioxToJournal(raw: Record<string, unknown>): JournalDto {
-  const rows = (raw['rows'] as Record<string, unknown>[] | undefined) ?? [];
+  // Briox detail API returns rows as "journal_rows" (list endpoint omits them)
+  const rows = (raw['journal_rows'] as Record<string, unknown>[] | undefined)
+    ?? (raw['journalrows'] as Record<string, unknown>[] | undefined) ?? [];
   const entries: AccountingEntryDto[] = rows.map((row) => ({
-    accountNumber: String(row['account_number'] ?? ''),
+    // Briox uses "account" (not "account_number") for the account field
+    accountNumber: String(row['account'] ?? row['account_number'] ?? ''),
     accountName: row['account_name'] as string | undefined,
-    debit: (row['debit'] as number) ?? 0,
-    credit: (row['credit'] as number) ?? 0,
-    transactionDate: row['transaction_date'] as string | undefined,
-    description: row['description'] as string | undefined,
+    // Briox returns debit/credit as strings
+    debit: Number(row['debit'] ?? 0),
+    credit: Number(row['credit'] ?? 0),
+    transactionDate: (row['transactiondate'] ?? row['transaction_date']) as string | undefined,
+    description: (row['transactioninfo'] ?? row['description']) as string | undefined,
   }));
 
   return {
     id: String(raw['id'] ?? ''),
-    journalNumber: String(raw['journal_number'] ?? raw['number'] ?? ''),
+    journalNumber: String(raw['id'] ?? raw['journal_number'] ?? ''),
     series: raw['series'] ? {
       id: String(raw['series']),
     } : undefined,
-    description: raw['description'] as string | undefined,
-    registrationDate: ((raw['journal_date'] ?? raw['date']) as string) ?? '',
-    fiscalYear: raw['financial_year'] != null ? Number(raw['financial_year']) : undefined,
+    // Briox uses "descr" for the journal description
+    description: (raw['descr'] ?? raw['description']) as string | undefined,
+    // Briox uses "transactiondate" for the date
+    registrationDate: ((raw['transactiondate'] ?? raw['journal_date'] ?? raw['date']) as string) ?? '',
+    fiscalYear: raw['year'] != null ? Number(raw['year']) : (raw['financial_year'] != null ? Number(raw['financial_year']) : undefined),
     entries,
     _raw: raw,
   };
 }
 
 export function mapBrioxToAccountingAccount(raw: Record<string, unknown>): AccountingAccountDto {
-  const num = Number(raw['account_number'] ?? raw['number']);
+  // Briox uses "id" as the account number field
+  const num = Number(raw['id'] ?? raw['account_number'] ?? raw['number']);
   let type: AccountType | undefined;
   if (num >= 1000 && num < 2000) type = 'asset';
   else if (num >= 2000 && num < 3000) type = 'liability';
@@ -220,11 +227,14 @@ export function mapBrioxToAccountingAccount(raw: Record<string, unknown>): Accou
   else if (num >= 4000 && num < 9000) type = 'expense';
 
   return {
-    accountNumber: String(raw['account_number'] ?? raw['number'] ?? ''),
-    name: ((raw['name'] ?? raw['description']) as string) ?? '',
+    accountNumber: String(raw['id'] ?? raw['account_number'] ?? raw['number'] ?? ''),
+    // Briox uses "description" for the account name
+    name: ((raw['description'] ?? raw['name']) as string) ?? '',
     type,
-    active: raw['active'] !== false,
-    balanceCarriedForward: raw['opening_balance'] as number | undefined,
+    // Briox returns active as "1"/"0" strings
+    active: raw['active'] !== false && raw['active'] !== '0' && raw['active'] !== 0,
+    // Briox uses "incoming_balance" for opening balance
+    balanceCarriedForward: raw['incoming_balance'] != null ? Number(raw['incoming_balance']) : undefined,
     _raw: raw,
   };
 }

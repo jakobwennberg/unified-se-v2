@@ -145,10 +145,12 @@ export async function GET(
 
     const page = url.searchParams.get('page') ? Number(url.searchParams.get('page')) : 1;
     const pageSize = url.searchParams.get('pageSize') ? Number(url.searchParams.get('pageSize')) : 100;
+    const includeEntries = url.searchParams.get('includeEntries') !== 'false';
 
     let listEndpoint = config.listEndpoint;
+    let fiscalYear: string | undefined;
     if (config.yearScoped) {
-      const fiscalYear = url.searchParams.get('fiscalYear') ?? await brioxClient.getCurrentFinancialYear(accessToken);
+      fiscalYear = url.searchParams.get('fiscalYear') ?? await brioxClient.getCurrentFinancialYear(accessToken);
       listEndpoint = `${config.listEndpoint}/${fiscalYear}`;
     }
 
@@ -156,6 +158,36 @@ export async function GET(
       page, pageSize,
       fromModifiedDate: config.supportsModifiedFilter ? (url.searchParams.get('lastModified') ?? undefined) : undefined,
     });
+
+    if (includeEntries && config.supportsEntryHydration && fiscalYear) {
+      // Hydrate in batches of 5 to stay within Briox rate limits (10 req/s)
+      const BATCH_SIZE = 5;
+      const hydrated: Record<string, unknown>[] = [];
+      for (let i = 0; i < result.items.length; i += BATCH_SIZE) {
+        const batch = result.items.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batch.map(async (item) => {
+            try {
+              const series = String(item['series'] ?? '');
+              const id = String(item['id'] ?? '');
+              if (!series || !id) return item;
+              const detailPath = `/journal/${fiscalYear}/${series}/${id}`;
+              const detailResponse = await brioxClient.get<{ data: Record<string, unknown> }>(accessToken, detailPath);
+              const detail = detailResponse.data?.['journal'] as Record<string, unknown> | undefined;
+              if (detail?.['journal_rows']) {
+                return { ...item, journal_rows: detail['journal_rows'] };
+              }
+            } catch {
+              // Graceful degradation — return item without rows
+            }
+            return item;
+          }),
+        );
+        hydrated.push(...batchResults);
+      }
+      const mapped = hydrated.map(config.mapper).map(m => stripRaw(m as Record<string, unknown>));
+      return NextResponse.json({ data: mapped, page: result.page, pageSize, totalCount: result.totalCount, totalPages: result.totalPages, hasMore: result.page < result.totalPages });
+    }
 
     const mapped = result.items.map(config.mapper).map(m => stripRaw(m as Record<string, unknown>));
     return NextResponse.json({ data: mapped, page: result.page, pageSize, totalCount: result.totalCount, totalPages: result.totalPages, hasMore: result.page < result.totalPages });

@@ -1,6 +1,6 @@
 import type { ResourceType } from '../types/dto';
 
-export type ProviderName = 'fortnox' | 'visma' | 'briox' | 'bokio' | 'bjornlunden';
+export type ProviderName = 'fortnox' | 'visma' | 'briox' | 'bokio' | 'bjornlunden' | 'manual-sie';
 
 export interface RateLimitConfig {
   maxRequests: number;

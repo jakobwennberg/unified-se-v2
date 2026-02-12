@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { authenticateRequest } from '@/lib/api/auth-middleware';
 import { resolveConsent, type ResolvedConsent } from '@/lib/api/resolve-consent';
 import { ResourceType } from '@/lib/types/dto';
@@ -12,6 +13,8 @@ import { VismaClient } from '@/lib/providers/visma/client';
 import { BrioxClient } from '@/lib/providers/briox/client';
 import { BokioClient } from '@/lib/providers/bokio/client';
 import { BjornLundenClient } from '@/lib/providers/bjornlunden/client';
+import { mapSieAccounts, mapSieJournals, mapSieCompanyInfo } from '@/lib/providers/manual-sie/mapper';
+import type { SIEParseResult } from '@/lib/providers/manual-sie/parser';
 
 const fortnoxClient = new FortnoxClient();
 const vismaClient = new VismaClient();
@@ -217,6 +220,66 @@ export async function GET(
 
     const mapped = result.items.map(config.mapper).map(m => stripRaw(m as Record<string, unknown>));
     return NextResponse.json({ data: mapped, page: result.page, pageSize, totalCount: result.totalCount, totalPages: result.totalPages, hasMore: result.page < result.totalPages });
+  }
+
+  if (provider === 'manual-sie') {
+    const supportedTypes = new Set(['accountingaccounts', 'journals', 'companyinformation']);
+    if (!supportedTypes.has(resourceType)) {
+      return NextResponse.json({ error: `Resource ${resourceType} not supported for manual-sie` }, { status: 400 });
+    }
+
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    const { data: uploads } = await supabase
+      .from('sie_uploads')
+      .select('parsed_data')
+      .eq('consent_id', consentId)
+      .order('uploaded_at', { ascending: true });
+
+    if (!uploads || uploads.length === 0) {
+      return NextResponse.json({ data: [], page: 1, pageSize: 0, totalCount: 0, totalPages: 0, hasMore: false });
+    }
+
+    // Aggregate data across all uploads
+    const allResults = uploads.map((u) => u.parsed_data as unknown as SIEParseResult);
+
+    if (resourceType === 'companyinformation') {
+      // Use the most recent upload's company info
+      const latest = allResults[allResults.length - 1]!;
+      const mapped = mapSieCompanyInfo(latest);
+      return NextResponse.json({ data: mapped });
+    }
+
+    if (resourceType === 'accountingaccounts') {
+      // Merge accounts across uploads, latest upload wins for duplicates
+      const accountMap = new Map<string, ReturnType<typeof mapSieAccounts>[number]>();
+      for (const result of allResults) {
+        for (const acc of mapSieAccounts(result)) {
+          accountMap.set(acc.accountNumber, acc);
+        }
+      }
+      const allAccounts = Array.from(accountMap.values());
+
+      const page = url.searchParams.get('page') ? Number(url.searchParams.get('page')) : 1;
+      const pageSize = url.searchParams.get('pageSize') ? Number(url.searchParams.get('pageSize')) : 100;
+      const start = (page - 1) * pageSize;
+      const paged = allAccounts.slice(start, start + pageSize);
+      const totalPages = Math.ceil(allAccounts.length / pageSize);
+
+      return NextResponse.json({ data: paged, page, pageSize, totalCount: allAccounts.length, totalPages, hasMore: page < totalPages });
+    }
+
+    if (resourceType === 'journals') {
+      // Aggregate journals across uploads
+      const allJournals = allResults.flatMap((r) => mapSieJournals(r));
+
+      const page = url.searchParams.get('page') ? Number(url.searchParams.get('page')) : 1;
+      const pageSize = url.searchParams.get('pageSize') ? Number(url.searchParams.get('pageSize')) : 100;
+      const start = (page - 1) * pageSize;
+      const paged = allJournals.slice(start, start + pageSize);
+      const totalPages = Math.ceil(allJournals.length / pageSize);
+
+      return NextResponse.json({ data: paged, page, pageSize, totalCount: allJournals.length, totalPages, hasMore: page < totalPages });
+    }
   }
 
   return NextResponse.json({ error: `Unknown provider: ${provider}` }, { status: 400 });

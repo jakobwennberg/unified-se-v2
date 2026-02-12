@@ -30,6 +30,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   visma: 'Visma eEkonomi',
   bokio: 'Bokio',
   bjornlunden: 'Bjorn Lunden',
+  'manual-sie': 'Manual SIE Upload',
 };
 
 interface ConsentDetail {
@@ -173,7 +174,7 @@ export default function ConsentDetailPage() {
           <Card>
             <CardContent className="pt-6">
               {consent.status === 1 ? (
-                <ResourceBrowser api={apiClient} consentId={consentId} />
+                <ResourceBrowser api={apiClient} consentId={consentId} provider={consent.provider} />
               ) : (
                 <p className="text-sm text-muted-foreground">
                   Data Explorer is only available for accepted consents.

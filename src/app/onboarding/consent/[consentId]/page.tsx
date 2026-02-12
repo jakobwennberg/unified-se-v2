@@ -9,6 +9,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   briox: 'Briox',
   bokio: 'Bokio',
   bjornlunden: 'Bjorn Lunden',
+  'manual-sie': 'Manual SIE Upload',
 };
 
 interface ConsentData {
@@ -35,6 +36,13 @@ export default function OnboardingPage() {
   const [bokioApiToken, setBokioApiToken] = useState('');
   const [bokioCompanyId, setBokioCompanyId] = useState('');
   const [blCompanyKey, setBlCompanyKey] = useState('');
+  const [sieFile, setSieFile] = useState<File | null>(null);
+  const [sieUploading, setSieUploading] = useState(false);
+  const [sieDragOver, setSieDragOver] = useState(false);
+  const [sieUploadResult, setSieUploadResult] = useState<{
+    fileName: string;
+    stats: { accounts: number; transactions: number; balances: number };
+  } | null>(null);
 
   const fetchConsent = useCallback(async () => {
     try {
@@ -164,6 +172,45 @@ export default function OnboardingPage() {
       setError(e instanceof Error ? e.message : 'Something went wrong');
       setAccepting(false);
     }
+  };
+
+  const handleSieUpload = async (file: File) => {
+    if (!consent) return;
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.se') && !name.endsWith('.si')) {
+      setError('Invalid file type. Please upload a .se or .si file.');
+      return;
+    }
+    setSieUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const uploadUrl = `/api/v1/consents/${consentId}/sie-upload${otcCode ? `?otc=${encodeURIComponent(otcCode)}` : ''}`;
+      const res = await fetch(uploadUrl, { method: 'POST', body: formData });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to upload SIE file');
+      }
+      const result = await res.json();
+      setSieUploadResult({
+        fileName: result.fileName,
+        stats: result.stats,
+      });
+      setSieFile(null);
+      setDone(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong');
+    } finally {
+      setSieUploading(false);
+    }
+  };
+
+  const handleSieUploadAnother = () => {
+    setDone(false);
+    setSieUploadResult(null);
+    setSieFile(null);
+    setError(null);
   };
 
   return (
@@ -304,6 +351,59 @@ export default function OnboardingPage() {
                   {accepting ? 'Connecting...' : 'Connect'}
                 </button>
               </>
+            ) : consent.provider === 'manual-sie' ? (
+              <>
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground text-center">
+                    Upload your SIE file (.se or .si) to connect your accounting data.
+                  </p>
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setSieDragOver(true); }}
+                    onDragLeave={() => setSieDragOver(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setSieDragOver(false);
+                      const file = e.dataTransfer.files[0];
+                      if (file) {
+                        setSieFile(file);
+                        handleSieUpload(file);
+                      }
+                    }}
+                    className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors cursor-pointer ${
+                      sieDragOver ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'
+                    }`}
+                    onClick={() => document.getElementById('sie-file-input')?.click()}
+                  >
+                    <svg className="h-10 w-10 text-muted-foreground/50 mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    </svg>
+                    <p className="text-sm font-medium">
+                      {sieUploading ? 'Uploading...' : 'Drag & drop your SIE file here'}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      or click to browse (.se / .si files)
+                    </p>
+                  </div>
+                  <input
+                    id="sie-file-input"
+                    type="file"
+                    accept=".se,.si"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setSieFile(file);
+                        handleSieUpload(file);
+                      }
+                    }}
+                  />
+                  {sieFile && !sieUploading && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      Selected: {sieFile.name}
+                    </p>
+                  )}
+                </div>
+              </>
             ) : (
               <>
                 <p className="text-xs text-muted-foreground text-center">
@@ -330,10 +430,40 @@ export default function OnboardingPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
               </svg>
             </div>
-            <h2 className="text-xl font-semibold">Connected!</h2>
-            <p className="text-sm text-muted-foreground">
-              Your accounting system has been connected successfully.
-            </p>
+            <h2 className="text-xl font-semibold">
+              {consent?.provider === 'manual-sie' ? 'File Uploaded!' : 'Connected!'}
+            </h2>
+            {sieUploadResult ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  <strong>{sieUploadResult.fileName}</strong> parsed successfully.
+                </p>
+                <div className="rounded-md border p-3 text-sm space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Accounts</span>
+                    <span className="font-medium">{sieUploadResult.stats.accounts}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Transactions</span>
+                    <span className="font-medium">{sieUploadResult.stats.transactions}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Balances</span>
+                    <span className="font-medium">{sieUploadResult.stats.balances}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={handleSieUploadAnother}
+                  className="w-full rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
+                >
+                  Upload Another File
+                </button>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Your accounting system has been connected successfully.
+              </p>
+            )}
             <a
               href={`/customer/consent/${consentId}`}
               className="inline-block rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"

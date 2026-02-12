@@ -32,8 +32,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'name and provider are required' }, { status: 400 });
   }
 
-  if (!['fortnox', 'visma', 'briox', 'bokio', 'bjornlunden'].includes(provider)) {
-    return NextResponse.json({ error: 'provider must be fortnox, visma, briox, bokio, or bjornlunden' }, { status: 400 });
+  if (!['fortnox', 'visma', 'briox', 'bokio', 'bjornlunden', 'manual-sie'].includes(provider)) {
+    return NextResponse.json({ error: 'provider must be fortnox, visma, briox, bokio, bjornlunden, or manual-sie' }, { status: 400 });
   }
 
   const supabase = getServiceClient();

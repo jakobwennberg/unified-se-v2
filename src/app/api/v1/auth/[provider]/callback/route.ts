@@ -20,6 +20,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
     return NextResponse.json({ error: `Unsupported provider: ${provider}` }, { status: 400 });
   }
 
+  // manual-sie doesn't use OAuth callback
+  if (provider === 'manual-sie') {
+    return NextResponse.json({ error: 'manual-sie does not use OAuth callback' }, { status: 400 });
+  }
+
   const body = await request.json();
   const { code, consentId } = body;
   if (!code || !consentId) {

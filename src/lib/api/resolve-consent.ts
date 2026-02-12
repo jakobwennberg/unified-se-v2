@@ -39,6 +39,11 @@ export async function resolveConsent(tenantId: string, consentId: string): Promi
     throw { status: 403, message: 'Consent is not in Accepted status' };
   }
 
+  // manual-sie: no tokens needed — data comes from sie_uploads table
+  if (consent.provider === 'manual-sie') {
+    return { consent, accessToken: '' };
+  }
+
   // Load tokens
   const { data: tokenRows } = await supabase
     .from('consent_tokens')

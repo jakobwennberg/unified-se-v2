@@ -190,6 +190,7 @@ export function mapBokioToAccountingAccount(raw: Record<string, unknown>): Accou
     name: (raw['name'] as string) ?? '',
     type,
     active: raw['isActive'] !== false,
+    balanceCarriedForward: raw['accountBalance'] != null ? Number(raw['accountBalance']) : undefined,
     _raw: raw,
   };
 }

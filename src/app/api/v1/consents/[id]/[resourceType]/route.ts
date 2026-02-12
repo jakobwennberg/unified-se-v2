@@ -129,7 +129,36 @@ export async function GET(
       modifiedField: config.modifiedField,
     });
 
-    const mapped = result.items.map(config.mapper).map(m => stripRaw(m as Record<string, unknown>));
+    let mapped = result.items.map(config.mapper).map(m => stripRaw(m as Record<string, unknown>));
+
+    // Enrich accounts with balance data from /accountbalances endpoint
+    if (resourceType === ResourceType.AccountingAccounts && mapped.length > 0) {
+      try {
+        const today = new Date().toISOString().slice(0, 10); // yyyy-MM-dd
+        const balances = await vismaClient.getPaginated<Record<string, unknown>>(
+          accessToken,
+          `/accountbalances/${today}`,
+        );
+        const balanceMap = new Map<string, number>();
+        for (const b of balances) {
+          const accNum = b['AccountNumber'] != null ? String(b['AccountNumber']) : undefined;
+          const balance = b['Balance'] as number | undefined;
+          if (accNum != null && balance != null) {
+            balanceMap.set(accNum, balance);
+          }
+        }
+        mapped = mapped.map((account) => {
+          const accNum = account['accountNumber'] as string | undefined;
+          if (accNum && balanceMap.has(accNum)) {
+            return { ...account, balanceCarriedForward: balanceMap.get(accNum) };
+          }
+          return account;
+        });
+      } catch {
+        // Graceful degradation — return accounts without balance data
+      }
+    }
+
     return NextResponse.json({ data: mapped, page: result.page, pageSize, totalCount: result.totalCount, totalPages: result.totalPages, hasMore: result.page < result.totalPages });
   }
 
@@ -210,7 +239,34 @@ export async function GET(
     }
 
     if (config.paginated === false) {
-      const items = await bokioClient.getAll<Record<string, unknown>>(accessToken, companyId, config.listEndpoint);
+      let items = await bokioClient.getAll<Record<string, unknown>>(accessToken, companyId, config.listEndpoint);
+
+      // Hydrate accounts with balance from detail endpoint (opt-in due to N+1 API calls)
+      const includeBalances = url.searchParams.get('includeBalances') === 'true';
+      if (includeBalances && resourceType === ResourceType.AccountingAccounts && items.length > 0) {
+        const BATCH_SIZE = 5;
+        const hydrated: Record<string, unknown>[] = [];
+        for (let i = 0; i < items.length; i += BATCH_SIZE) {
+          const batch = items.slice(i, i + BATCH_SIZE);
+          const batchResults = await Promise.all(
+            batch.map(async (item) => {
+              try {
+                const accountNum = item['account'] ?? item['accountNumber'] ?? item['number'];
+                if (accountNum == null) return item;
+                const detail = await bokioClient.getDetail<Record<string, unknown>>(
+                  accessToken, companyId, `/chart-of-accounts/${accountNum}`,
+                );
+                return detail ?? item;
+              } catch {
+                return item;
+              }
+            }),
+          );
+          hydrated.push(...batchResults);
+        }
+        items = hydrated;
+      }
+
       const mapped = items.map(config.mapper).map(m => stripRaw(m as Record<string, unknown>));
       return NextResponse.json({ data: mapped, page: 1, pageSize: items.length, totalCount: items.length, totalPages: 1, hasMore: false });
     }

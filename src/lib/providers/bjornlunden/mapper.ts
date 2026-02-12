@@ -260,6 +260,9 @@ export function mapBLToAccountingAccount(raw: Record<string, unknown>): Accounti
     vatCode: raw['vatCode'] as string | undefined,
     sruCode: raw['sruCode'] != null ? String(raw['sruCode']) : undefined,
     active: raw['closed'] !== true,
+    balanceCarriedForward: (raw['debit'] != null || raw['credit'] != null)
+      ? (Number(raw['debit'] ?? 0) - Number(raw['credit'] ?? 0))
+      : undefined,
     _raw: raw,
   };
 }

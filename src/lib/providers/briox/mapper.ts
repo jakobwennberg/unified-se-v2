@@ -233,6 +233,7 @@ export function mapBrioxToAccountingAccount(raw: Record<string, unknown>): Accou
     type,
     // Briox returns active as "1"/"0" strings
     active: raw['active'] !== false && raw['active'] !== '0' && raw['active'] !== 0,
+    vatCode: raw['vat_code'] != null ? String(raw['vat_code']) : undefined,
     // Briox uses "incoming_balance" for opening balance
     balanceCarriedForward: raw['incoming_balance'] != null ? Number(raw['incoming_balance']) : undefined,
     _raw: raw,

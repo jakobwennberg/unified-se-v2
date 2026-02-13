@@ -144,8 +144,6 @@ export function KPIPanel({ consentId, provider }: KPIPanelProps) {
           <CardContent className="py-3">
             <p className="text-sm text-amber-600">
               Using journal-based computation — values may differ from official reports.
-              Re-sync <code className="text-xs bg-muted px-1 rounded">accountingaccounts</code> to
-              get authoritative balance data (IB/UB).
             </p>
             {metadata.reconciled === false && (
               <p className="text-sm text-destructive mt-1">

@@ -473,14 +473,9 @@ export default function OnboardingPage() {
             ) : (
               <p className="text-sm text-muted-foreground">
                 Your accounting system has been connected successfully.
+                You can safely close this page.
               </p>
             )}
-            <a
-              href={`/customer/consent/${consentId}`}
-              className="inline-block rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
-            >
-              View Connection Status
-            </a>
           </div>
         )}
       </div>

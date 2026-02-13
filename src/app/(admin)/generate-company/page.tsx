@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Sparkles, Download, Copy, CheckCircle2, TriangleAlert } from 'lucide-react';
 import type { SIEParseResult } from '@/lib/sie/types';
+import { KPIDetailTables, type KPIValues } from '@/components/shared/kpi-display';
 import { GenerationProgress } from './generation-progress';
 import { CompanyHeader } from './company-header';
 import { HeadlineStats } from './headline-stats';
@@ -40,121 +41,12 @@ interface Profile {
   description: string;
 }
 
-interface KPIs {
-  [key: string]: number | null | boolean;
-}
-
 interface GenerateResult {
   profile: Profile;
   sieText: string;
   sieData: SIEParseResult;
-  kpis: KPIs;
+  kpis: KPIValues;
 }
-
-function formatSEK(value: number | null | undefined): string {
-  if (value == null) return '—';
-  return new Intl.NumberFormat('sv-SE', { style: 'decimal', maximumFractionDigits: 0 }).format(value) + ' SEK';
-}
-
-function formatPercent(value: number | null | undefined): string {
-  if (value == null) return '—';
-  return value.toFixed(1) + '%';
-}
-
-function formatRatio(value: number | null | undefined): string {
-  if (value == null) return '—';
-  return value.toFixed(2);
-}
-
-const KPI_GROUPS = [
-  {
-    title: 'Income Statement',
-    items: [
-      ['Net Sales', 'netSales', 'sek'],
-      ['Total Operating Income', 'totalOperatingIncome', 'sek'],
-      ['Cost of Goods Sold', 'costOfGoodsSold', 'sek'],
-      ['Gross Profit', 'grossProfit', 'sek'],
-      ['External Costs', 'externalCosts', 'sek'],
-      ['Personnel Costs', 'personnelCosts', 'sek'],
-      ['Depreciation', 'depreciation', 'sek'],
-      ['EBITDA', 'ebitda', 'sek'],
-      ['EBIT', 'ebit', 'sek'],
-      ['Financial Net', 'financialNet', 'sek'],
-      ['Result Before Tax', 'resultBeforeTax', 'sek'],
-      ['Tax', 'tax', 'sek'],
-      ['Net Income', 'netIncome', 'sek'],
-    ],
-  },
-  {
-    title: 'Balance Sheet',
-    items: [
-      ['Total Assets', 'totalAssets', 'sek'],
-      ['Fixed Assets', 'fixedAssets', 'sek'],
-      ['Current Assets', 'currentAssets', 'sek'],
-      ['Inventory', 'inventory', 'sek'],
-      ['Customer Receivables', 'customerReceivables', 'sek'],
-      ['Cash & Bank', 'cashAndBank', 'sek'],
-      ['Adjusted Equity', 'adjustedEquity', 'sek'],
-      ['Current Liabilities', 'currentLiabilities', 'sek'],
-      ['Total Liabilities', 'totalLiabilities', 'sek'],
-      ['Net Debt', 'netDebt', 'sek'],
-    ],
-  },
-  {
-    title: 'Margins',
-    items: [
-      ['Gross Margin', 'grossMargin', 'pct'],
-      ['EBITDA Margin', 'ebitdaMargin', 'pct'],
-      ['Operating Margin', 'operatingMargin', 'pct'],
-      ['Profit Margin', 'profitMargin', 'pct'],
-      ['Net Margin', 'netMargin', 'pct'],
-    ],
-  },
-  {
-    title: 'Returns',
-    items: [
-      ['ROA', 'roa', 'pct'],
-      ['ROE', 'roe', 'pct'],
-      ['ROCE', 'roce', 'pct'],
-    ],
-  },
-  {
-    title: 'Liquidity',
-    items: [
-      ['Cash Ratio', 'cashRatio', 'ratio'],
-      ['Quick Ratio', 'quickRatio', 'ratio'],
-      ['Current Ratio', 'currentRatio', 'ratio'],
-      ['Working Capital', 'workingCapital', 'sek'],
-    ],
-  },
-  {
-    title: 'Capital Structure',
-    items: [
-      ['Equity Ratio (Soliditet)', 'equityRatio', 'pct'],
-      ['Debt/Equity', 'debtToEquityRatio', 'ratio'],
-      ['D/E (Interest-bearing)', 'deRatio', 'ratio'],
-      ['Interest Coverage', 'interestCoverageRatio', 'ratio'],
-    ],
-  },
-  {
-    title: 'Efficiency',
-    items: [
-      ['DIO (days)', 'dio', 'ratio'],
-      ['DSO (days)', 'dso', 'ratio'],
-      ['DPO (days)', 'dpo', 'ratio'],
-      ['Cash Conversion Cycle', 'ccc', 'ratio'],
-      ['Asset Turnover', 'assetTurnover', 'ratio'],
-    ],
-  },
-  {
-    title: 'Growth (YoY)',
-    items: [
-      ['Revenue Growth', 'revenueGrowth', 'pct'],
-      ['Asset Growth', 'assetGrowth', 'pct'],
-      ['Equity Growth', 'equityGrowth', 'pct'],
-    ],
-  },
-] as const;
 
 export default function GenerateCompanyPage() {
   const [industry, setIndustry] = useState('');
@@ -223,14 +115,6 @@ export default function GenerateCompanyPage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }
-
-  function formatKPIValue(key: string, type: string, kpis: KPIs): string {
-    const val = kpis[key];
-    if (val == null || typeof val === 'boolean') return '—';
-    if (type === 'sek') return formatSEK(val as number);
-    if (type === 'pct') return formatPercent(val as number);
-    return formatRatio(val as number);
   }
 
   return (
@@ -358,29 +242,7 @@ export default function GenerateCompanyPage() {
 
             {/* Financial Details tab */}
             <TabsContent value="financial-details">
-              <div className="grid gap-4 md:grid-cols-2">
-                {KPI_GROUPS.map((group) => (
-                  <Card key={group.title}>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-semibold">{group.title}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <table className="w-full text-sm">
-                        <tbody>
-                          {group.items.map(([label, key, type]) => (
-                            <tr key={key} className="border-b last:border-0">
-                              <td className="py-1.5 text-muted-foreground">{label}</td>
-                              <td className="py-1.5 text-right font-mono">
-                                {formatKPIValue(key, type, result.kpis)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              <KPIDetailTables kpis={result.kpis} />
             </TabsContent>
 
             {/* SIE File tab */}

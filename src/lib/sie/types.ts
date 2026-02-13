@@ -25,6 +25,7 @@ export interface SIEKPIs {
   totalEquity: number;
   untaxedReserves: number;
   adjustedEquity: number;
+  ownerEquityAdjustment: number;
   deferredTaxLiability: number;
   provisions: number;
   longTermLiabilities: number;

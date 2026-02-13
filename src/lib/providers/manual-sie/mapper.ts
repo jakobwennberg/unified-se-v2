@@ -33,11 +33,13 @@ function deriveAccountType(accountNumber: string): AccountType {
  * Maps SIE accounts (#KONTO + #SRU + #IB) → AccountingAccountDto[]
  */
 export function mapSieAccounts(result: SIEParseResult): AccountingAccountDto[] {
-  // Build opening balance lookup (year index 0 = current year)
+  // Build balance lookups (year index 0 = current year)
   const ibMap = new Map<string, number>();
+  const ubMap = new Map<string, number>();
   for (const b of result.balances) {
-    if (b.balanceType === 'IB' && b.yearIndex === 0) {
-      ibMap.set(b.accountNumber, b.amount);
+    if (b.yearIndex === 0) {
+      if (b.balanceType === 'IB') ibMap.set(b.accountNumber, b.amount);
+      if (b.balanceType === 'UB') ubMap.set(b.accountNumber, b.amount);
     }
   }
 
@@ -47,7 +49,8 @@ export function mapSieAccounts(result: SIEParseResult): AccountingAccountDto[] {
     description: acc.accountGroup || undefined,
     type: deriveAccountType(acc.accountNumber),
     active: true,
-    balanceCarriedForward: ibMap.get(acc.accountNumber) ?? undefined,
+    balanceBroughtForward: ibMap.get(acc.accountNumber) ?? undefined,
+    balanceCarriedForward: ubMap.get(acc.accountNumber) ?? ibMap.get(acc.accountNumber) ?? undefined,
     sruCode: acc.taxCode,
   }));
 }

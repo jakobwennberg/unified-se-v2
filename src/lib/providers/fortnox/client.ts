@@ -7,6 +7,7 @@ export class FortnoxApiError extends Error {
     message: string,
     public readonly statusCode: number,
     public readonly body?: string,
+    public readonly retryAfterMs?: number,
   ) {
     super(message);
     this.name = 'FortnoxApiError';
@@ -47,19 +48,32 @@ export class FortnoxClient {
 
         if (!response.ok) {
           const body = await response.text().catch(() => '');
+          let retryAfterMs: number | undefined;
+          if (response.status === 429) {
+            const retryAfter = response.headers.get('Retry-After');
+            retryAfterMs = retryAfter ? Math.ceil(parseFloat(retryAfter)) * 1000 : undefined;
+          }
           throw new FortnoxApiError(
             `Fortnox API error: ${response.status} ${response.statusText}`,
             response.status,
             body,
+            retryAfterMs,
           );
         }
 
         return response.json() as Promise<T>;
       },
       {
-        maxAttempts: 3,
-        initialDelayMs: 1000,
+        maxAttempts: 6,
+        initialDelayMs: 2000,
+        maxDelayMs: 60_000,
         shouldRetry: isRetryableError,
+        getDelayMs: (error) => {
+          if (error instanceof FortnoxApiError && error.retryAfterMs) {
+            return error.retryAfterMs;
+          }
+          return undefined;
+        },
       },
     );
   }

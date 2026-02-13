@@ -230,6 +230,7 @@ export function mapFortnoxToAccountingAccount(raw: Record<string, unknown>): Acc
     type,
     vatCode: raw['VATCode'] as string | undefined,
     active: raw['Active'] !== false,
+    balanceBroughtForward: raw['BalanceBroughtForward'] as number | undefined,
     balanceCarriedForward: raw['BalanceCarriedForward'] as number | undefined,
     sruCode: raw['SRU'] != null ? String(raw['SRU']) : undefined,
     _raw: raw,

@@ -299,6 +299,7 @@ export interface AccountingAccountDto {
   type?: AccountType;
   vatCode?: string;
   active: boolean;
+  balanceBroughtForward?: number;
   balanceCarriedForward?: number;
   sruCode?: string;
   createdAt?: string;

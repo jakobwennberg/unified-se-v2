@@ -74,7 +74,13 @@ function calculateAverage(
   return ib;
 }
 
-/** Calculate adjusted equity for a specific year. */
+/** Calculate adjusted equity for a specific year.
+ *
+ * Includes reclassification of non-interest-bearing long-term liabilities
+ * (2360-2399: debts to owners/group/associated companies) as quasi-equity.
+ * In Swedish SMEs these accounts commonly hold retained earnings or permanent
+ * owner capital rather than genuine external debt.
+ */
 function calculateAdjustedEquityValue(
   balances: SIEBalance[],
   balanceType: 'IB' | 'UB' | 'AVG',
@@ -99,9 +105,17 @@ function calculateAdjustedEquityValue(
         yearIndex,
       ),
     );
+    const avgOwnerDebt = Math.abs(
+      calculateAverage(
+        balances,
+        SWEDISH_ACCOUNTS.LONG_TERM_LIABILITIES.NON_INTEREST_BEARING,
+        yearIndex,
+      ),
+    );
     return (
       avgEquity +
       avgReserves * EQUITY_PORTION_OF_UNTAXED_RESERVES +
+      avgOwnerDebt +
       ytdResult / 2
     );
   }
@@ -118,7 +132,13 @@ function calculateAdjustedEquityValue(
       SWEDISH_ACCOUNTS.UNTAXED_RESERVES.ALL,
     ),
   );
-  return equity + reserves * EQUITY_PORTION_OF_UNTAXED_RESERVES + ytdResult;
+  const ownerDebt = Math.abs(
+    sumAccountsInRange(
+      filteredBalances,
+      SWEDISH_ACCOUNTS.LONG_TERM_LIABILITIES.NON_INTEREST_BEARING,
+    ),
+  );
+  return equity + reserves * EQUITY_PORTION_OF_UNTAXED_RESERVES + ownerDebt + ytdResult;
 }
 
 /** Calculate comprehensive financial KPIs from parsed SIE data. */
@@ -175,9 +195,20 @@ export function calculateKPIs(
     max: 8999,
   });
 
+  // Owner equity adjustment: non-interest-bearing long-term liabilities
+  // (2360-2399) in Swedish SMEs often function as retained earnings or
+  // permanent owner capital rather than genuine external debt.
+  const ownerEquityAdjustment = Math.abs(
+    sumAccountsInRange(
+      balanceSheet,
+      SWEDISH_ACCOUNTS.LONG_TERM_LIABILITIES.NON_INTEREST_BEARING,
+    ),
+  );
+
   const adjustedEquity =
     totalEquity +
     untaxedReserves * EQUITY_PORTION_OF_UNTAXED_RESERVES +
+    ownerEquityAdjustment +
     ytdResult;
   const deferredTaxLiability = untaxedReserves * CORPORATE_TAX_RATE;
 
@@ -185,12 +216,13 @@ export function calculateKPIs(
     sumAccountsInRange(balanceSheet, SWEDISH_ACCOUNTS.PROVISIONS.ALL),
   );
 
-  const longTermLiabilities = Math.abs(
+  const longTermLiabilitiesRaw = Math.abs(
     sumAccountsInRange(
       balanceSheet,
       SWEDISH_ACCOUNTS.LONG_TERM_LIABILITIES.ALL,
     ),
   );
+  const longTermLiabilities = longTermLiabilitiesRaw - ownerEquityAdjustment;
   const currentLiabilities = Math.abs(
     sumAccountsInRange(
       balanceSheet,
@@ -469,6 +501,7 @@ export function calculateKPIs(
     totalEquity,
     untaxedReserves,
     adjustedEquity,
+    ownerEquityAdjustment,
     deferredTaxLiability,
     provisions,
     longTermLiabilities,

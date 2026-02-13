@@ -9,6 +9,7 @@ import { exchangeBrioxCode } from '@/lib/providers/briox/oauth';
 import { storeBokioToken } from '@/lib/providers/bokio/oauth';
 import { storeBjornLundenToken } from '@/lib/providers/bjornlunden/oauth';
 import { randomUUID } from 'node:crypto';
+import { syncConsent } from '@/lib/sync/sync-engine';
 
 function getServiceClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -35,13 +36,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
 
   // Try normal authentication first
   const auth = await authenticateRequest(request);
-  let consentRows: { id: string; provider: string }[] | null = null;
+  let consentRows: { id: string; provider: string; tenant_id: string }[] | null = null;
 
   if (auth) {
     // Verify the consent belongs to this tenant
     const { data } = await supabase
       .from('consents')
-      .select('id, provider')
+      .select('id, provider, tenant_id')
       .eq('id', consentId)
       .eq('tenant_id', auth.tenantId)
       .limit(1);
@@ -69,7 +70,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
 
     const { data } = await supabase
       .from('consents')
-      .select('id, provider')
+      .select('id, provider, tenant_id')
       .eq('id', consentId)
       .limit(1);
     consentRows = data;
@@ -147,6 +148,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
   const now = new Date().toISOString();
   const newEtag = randomUUID();
   await supabase.from('consents').update({ status: 1, etag: newEtag, updated_at: now }).eq('id', consentId);
+
+  // Trigger initial sync in background (fire-and-forget)
+  syncConsent({
+    consentId,
+    tenantId: consent.tenant_id,
+  }).catch((err) => {
+    console.error(`[sync] Background sync failed for consent ${consentId}:`, err);
+  });
 
   return NextResponse.json({ success: true, consentId });
 }

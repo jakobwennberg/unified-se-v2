@@ -4,6 +4,8 @@ export interface RetryOptions {
   maxDelayMs?: number;
   backoffMultiplier?: number;
   shouldRetry?: (error: unknown, attempt: number) => boolean;
+  /** Return a custom delay in ms for this error, or undefined to use default backoff. */
+  getDelayMs?: (error: unknown, attempt: number) => number | undefined;
 }
 
 const DEFAULT_OPTIONS = {
@@ -32,7 +34,8 @@ export async function withRetry<T>(
         break;
       }
 
-      const delay = Math.min(
+      const customDelay = options?.getDelayMs?.(error, attempt);
+      const delay = customDelay ?? Math.min(
         opts.initialDelayMs * opts.backoffMultiplier ** (attempt - 1),
         opts.maxDelayMs,
       );

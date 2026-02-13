@@ -133,10 +133,6 @@ export class BokioClient {
     return this.get<T>(accessToken, path);
   }
 
-  /**
-   * Fetch company information via GET /companies/{companyId}.
-   * Returns null if the endpoint returns 404 (e.g. missing company-information:read scope).
-   */
   async getCompany<T>(
     accessToken: string,
     companyId: string,

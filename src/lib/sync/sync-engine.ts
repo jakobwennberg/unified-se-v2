@@ -13,6 +13,7 @@ import { upsertSyncedResources, deleteStaleSyncedResources, updateSyncState } fr
 export async function syncConsent(options: SyncOptions): Promise<SyncResult> {
   const { consentId, tenantId, resourceTypes: requestedTypes } = options;
   const startTime = Date.now();
+  const log = (msg: string) => console.log(`[sync ${consentId.slice(0, 8)}] ${msg}`);
 
   // 1. Resolve consent → get tokens, provider info
   let resolved = await resolveConsent(tenantId, consentId);
@@ -20,6 +21,7 @@ export async function syncConsent(options: SyncOptions): Promise<SyncResult> {
 
   // 2. Determine resource types
   const resourceTypes = requestedTypes ?? getSupportedResourceTypes(provider);
+  log(`Starting sync for ${provider} — ${resourceTypes.length} resource types`);
 
   // 3. Generate batch ID
   const syncBatchId = crypto.randomUUID();
@@ -31,6 +33,7 @@ export async function syncConsent(options: SyncOptions): Promise<SyncResult> {
   for (const resourceType of resourceTypes) {
     const resourceStart = Date.now();
     let resourceResult: ResourceSyncResult;
+    log(`[${resourceType}] Starting fetch`);
 
     try {
       // Mark as syncing
@@ -49,12 +52,15 @@ export async function syncConsent(options: SyncOptions): Promise<SyncResult> {
         // On 401, try re-resolving consent for fresh token
         const e = fetchErr as { statusCode?: number; status?: number };
         if (e.statusCode === 401 || e.status === 401) {
+          log(`[${resourceType}] Got 401, re-resolving consent`);
           resolved = await resolveConsent(tenantId, consentId);
           dtos = await fetchAllForProvider(provider, resourceType, resolved);
         } else {
           throw fetchErr;
         }
       }
+
+      log(`[${resourceType}] Fetched ${dtos.length} records in ${((Date.now() - resourceStart) / 1000).toFixed(1)}s`);
 
       // Build rows with extracted fields
       const rows: SyncedResourceRow[] = dtos.map((dto) => {
@@ -101,8 +107,10 @@ export async function syncConsent(options: SyncOptions): Promise<SyncResult> {
         durationMs: Date.now() - resourceStart,
       };
       totalRecordsSynced += uniqueCount;
+      log(`[${resourceType}] Completed — ${uniqueCount} records in ${((Date.now() - resourceStart) / 1000).toFixed(1)}s`);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : String(err);
+      log(`[${resourceType}] Failed after ${((Date.now() - resourceStart) / 1000).toFixed(1)}s — ${errorMessage}`);
 
       await updateSyncState(consentId, resourceType, {
         status: 'failed',
@@ -129,6 +137,8 @@ export async function syncConsent(options: SyncOptions): Promise<SyncResult> {
   const allCompleted = results.every((r) => r.status === 'completed');
   const allFailed = results.every((r) => r.status === 'failed');
   const overallStatus = allCompleted ? 'completed' : allFailed ? 'failed' : 'partial';
+
+  log(`Sync finished — ${overallStatus}, ${totalRecordsSynced} total records in ${((Date.now() - startTime) / 1000).toFixed(1)}s`);
 
   return {
     consentId,

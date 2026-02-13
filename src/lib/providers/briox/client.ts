@@ -152,6 +152,8 @@ export class BrioxClient {
     if (years.length === 0) {
       throw new BrioxApiError('No financial years found in Briox', 404);
     }
-    return years[years.length - 1]!.id;
+    const now = new Date().toISOString().slice(0, 10);
+    const completed = years.filter((y) => y.todate < now);
+    return completed.length > 0 ? completed[completed.length - 1]!.id : years[0]!.id;
   }
 }

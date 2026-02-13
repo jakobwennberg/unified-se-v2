@@ -105,10 +105,9 @@ async function fetchFortnox(
   );
   onProgress?.(rawItems.length, resourceType);
 
-  // Hydrate journals (VoucherRows) via detail fetches — batched with concurrency
-  // The rate limiter on fortnoxClient handles throttling, so we can issue more concurrent requests
+  // Hydrate journals (VoucherRows) via detail fetches — batched to respect rate limits
   if (config.supportsEntryHydration) {
-    const BATCH_SIZE = 20;
+    const BATCH_SIZE = 5;
     const hydrated: Record<string, unknown>[] = [];
     for (let i = 0; i < rawItems.length; i += BATCH_SIZE) {
       const batch = rawItems.slice(i, i + BATCH_SIZE);

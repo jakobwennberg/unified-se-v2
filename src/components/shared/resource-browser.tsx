@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Braces, TableProperties } from 'lucide-react';
 
 const RESOURCE_TYPES = [
   { value: 'salesinvoices', label: 'Sales Invoices' },
@@ -241,6 +241,166 @@ function CompanyInfoCard({ data }: { data: CompanyInfo[] }) {
   );
 }
 
+// --- Generic formatted data renderers ---
+
+function FormattedValue({ value }: { value: unknown }) {
+  if (value === null || value === undefined) return <span className="text-muted-foreground">—</span>;
+  if (typeof value === 'boolean') return <Badge variant={value ? 'default' : 'secondary'}>{String(value)}</Badge>;
+  if (typeof value === 'number') return <span className="font-mono">{value.toLocaleString('sv-SE')}</span>;
+  if (typeof value === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}/.test(value)) return <span className="text-muted-foreground">{value}</span>;
+    return <span>{value}</span>;
+  }
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <span className="text-muted-foreground">[]</span>;
+    return (
+      <div className="space-y-1">
+        {value.map((item, i) => (
+          <div key={i} className="rounded border bg-muted/30 px-2 py-1 text-xs">
+            <FormattedValue value={item} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>);
+    return (
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
+        {entries.map(([k, v]) => (
+          <div key={k} className="contents">
+            <dt className="font-medium text-muted-foreground">{formatKey(k)}</dt>
+            <dd><FormattedValue value={v} /></dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
+  return <span>{String(value)}</span>;
+}
+
+function formatKey(key: string): string {
+  return key
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function FormattedDataView({ data }: { data: unknown[] }) {
+  if (data.length === 0) return <p className="text-sm text-muted-foreground">No data.</p>;
+
+  // For arrays of objects, try to render as a table
+  if (data.every((item) => typeof item === 'object' && item !== null && !Array.isArray(item))) {
+    const records = data as Record<string, unknown>[];
+    // Collect all keys, keeping scalar keys for columns and complex keys for expansion
+    const allKeys = Array.from(new Set(records.flatMap((r) => Object.keys(r))));
+    const scalarKeys = allKeys.filter((k) =>
+      records.some((r) => {
+        const v = r[k];
+        return v !== null && v !== undefined && typeof v !== 'object';
+      }),
+    );
+    const complexKeys = allKeys.filter((k) => !scalarKeys.includes(k));
+
+    // If too many scalar columns, switch to card layout
+    if (scalarKeys.length > 12) {
+      return <FormattedCards data={records} />;
+    }
+
+    return (
+      <div className="max-h-[600px] overflow-auto rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {scalarKeys.map((key) => (
+                <TableHead key={key} className="text-xs whitespace-nowrap">{formatKey(key)}</TableHead>
+              ))}
+              {complexKeys.length > 0 && <TableHead className="text-xs">Details</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {records.map((record, i) => (
+              <TableRow key={i}>
+                {scalarKeys.map((key) => (
+                  <TableCell key={key} className="text-xs">
+                    <FormattedValue value={record[key]} />
+                  </TableCell>
+                ))}
+                {complexKeys.length > 0 && (
+                  <TableCell className="text-xs">
+                    <ExpandableDetails record={record} keys={complexKeys} />
+                  </TableCell>
+                )}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  }
+
+  // Fallback for non-object arrays
+  return (
+    <div className="space-y-2">
+      {data.map((item, i) => (
+        <div key={i} className="rounded-md border p-3 text-sm">
+          <FormattedValue value={item} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FormattedCards({ data }: { data: Record<string, unknown>[] }) {
+  return (
+    <div className="grid gap-3">
+      {data.map((record, i) => (
+        <Card key={i}>
+          <CardContent className="pt-4">
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+              {Object.entries(record).map(([key, value]) => (
+                <div key={key}>
+                  <dt className="text-xs font-medium text-muted-foreground">{formatKey(key)}</dt>
+                  <dd className="mt-0.5"><FormattedValue value={value} /></dd>
+                </div>
+              ))}
+            </dl>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function ExpandableDetails({ record, keys }: { record: Record<string, unknown>; keys: string[] }) {
+  const [open, setOpen] = useState(false);
+  const nonEmpty = keys.filter((k) => record[k] !== null && record[k] !== undefined);
+  if (nonEmpty.length === 0) return <span className="text-muted-foreground">—</span>;
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        {nonEmpty.length} field{nonEmpty.length !== 1 ? 's' : ''}
+      </button>
+      {open && (
+        <div className="mt-1 space-y-1">
+          {nonEmpty.map((key) => (
+            <div key={key}>
+              <span className="text-xs font-medium text-muted-foreground">{formatKey(key)}: </span>
+              <FormattedValue value={record[key]} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // --- Main component ---
 
 export function ResourceBrowser({ api, consentId, provider }: ResourceBrowserProps) {
@@ -253,6 +413,7 @@ export function ResourceBrowser({ api, consentId, provider }: ResourceBrowserPro
   const [data, setData] = useState<{ data: unknown[]; totalCount: number; hasMore: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'formatted' | 'raw'>('formatted');
 
   const fetchData = async (rt: string, p: number) => {
     setLoading(true);
@@ -295,6 +456,14 @@ export function ResourceBrowser({ api, consentId, provider }: ResourceBrowserPro
   const renderData = () => {
     if (!data) return null;
 
+    if (viewMode === 'raw') {
+      return (
+        <pre className="max-h-[600px] overflow-auto rounded-md border bg-muted/50 p-4 text-xs">
+          {JSON.stringify(data.data, null, 2)}
+        </pre>
+      );
+    }
+
     if (isManualSie) {
       switch (resourceType) {
         case 'accountingaccounts':
@@ -306,11 +475,7 @@ export function ResourceBrowser({ api, consentId, provider }: ResourceBrowserPro
       }
     }
 
-    return (
-      <pre className="max-h-96 overflow-auto rounded-md border bg-muted/50 p-4 text-xs">
-        {JSON.stringify(data.data, null, 2)}
-      </pre>
-    );
+    return <FormattedDataView data={data.data} />;
   };
 
   return (
@@ -327,6 +492,32 @@ export function ResourceBrowser({ api, consentId, provider }: ResourceBrowserPro
             </option>
           ))}
         </select>
+        <div className="flex rounded-md border">
+          <button
+            type="button"
+            onClick={() => setViewMode('formatted')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs transition-colors ${
+              viewMode === 'formatted'
+                ? 'bg-primary text-primary-foreground'
+                : 'hover:bg-muted'
+            }`}
+          >
+            <TableProperties className="h-3.5 w-3.5" />
+            Formatted
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('raw')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs transition-colors ${
+              viewMode === 'raw'
+                ? 'bg-primary text-primary-foreground'
+                : 'hover:bg-muted'
+            }`}
+          >
+            <Braces className="h-3.5 w-3.5" />
+            Raw JSON
+          </button>
+        </div>
       </div>
 
       {loading && <p className="text-sm text-muted-foreground">Loading...</p>}

@@ -38,9 +38,12 @@ export default function ApiKeysPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">API Keys</h1>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">API Keys</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage authentication credentials</p>
+        </div>
         <Button onClick={() => setDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Generate Key
@@ -49,9 +52,9 @@ export default function ApiKeysPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Your API Keys</CardTitle>
+          <CardTitle className="text-base font-semibold">Your API Keys</CardTitle>
           <CardDescription>
-            Use API keys to authenticate requests to the Arcim Sync API.
+            Use API keys to authenticate requests to the Arcim API.
           </CardDescription>
         </CardHeader>
         <CardContent>

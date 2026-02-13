@@ -80,7 +80,7 @@ export async function POST(
 
   const { consent } = authorized;
 
-  if (consent.provider !== 'manual-sie') {
+  if (consent.provider && consent.provider !== 'manual-sie') {
     return NextResponse.json({ error: 'SIE upload is only available for manual-sie consents' }, { status: 400 });
   }
 
@@ -135,6 +135,7 @@ export async function POST(
       status: 1,
       etag: newEtag,
       updated_at: now,
+      ...(!consent.provider ? { provider: 'manual-sie' } : {}),
     };
 
     // Auto-populate company name and org number from SIE metadata

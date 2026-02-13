@@ -38,7 +38,7 @@ const PROVIDER_LABELS: Record<string, string> = {
 interface Consent {
   id: string;
   name: string;
-  provider: string;
+  provider: string | null;
   company_name: string | null;
   org_number: string | null;
   status: number;
@@ -55,7 +55,7 @@ export default function ConsentsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createName, setCreateName] = useState('');
-  const [createProvider, setCreateProvider] = useState('fortnox');
+  const [createProvider, setCreateProvider] = useState('');
   const [createOrgNumber, setCreateOrgNumber] = useState('');
   const [createCompanyName, setCreateCompanyName] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
@@ -86,7 +86,7 @@ export default function ConsentsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: createName.trim(),
-          provider: createProvider,
+          provider: createProvider || undefined,
           orgNumber: createOrgNumber.trim() || undefined,
           companyName: createCompanyName.trim() || undefined,
         }),
@@ -111,16 +111,20 @@ export default function ConsentsPage() {
   const filtered = useMemo(() => {
     return consents.filter((c) => {
       if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false;
-      if (provider && c.provider !== provider) return false;
+      if (provider === 'none' && c.provider !== null) return false;
+      if (provider && provider !== 'none' && c.provider !== provider) return false;
       if (status !== '' && c.status !== parseInt(status)) return false;
       return true;
     });
   }, [consents, search, provider, status]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Consents</h1>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Consents</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage accounting system connections</p>
+        </div>
         <Button onClick={() => setShowCreate(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Create Consent
@@ -134,7 +138,7 @@ export default function ConsentsPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Name *</label>
+              <label className="text-[13px] font-medium text-muted-foreground">Name *</label>
               <Input
                 placeholder="e.g. Acme Corp Fortnox"
                 value={createName}
@@ -142,8 +146,9 @@ export default function ConsentsPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Provider *</label>
+              <label className="text-[13px] font-medium text-muted-foreground">Provider</label>
               <Select value={createProvider} onChange={(e) => setCreateProvider(e.target.value)}>
+                <option value="">Customer Chooses</option>
                 <option value="fortnox">Fortnox</option>
                 <option value="visma">Visma eEkonomi</option>
                 <option value="briox">Briox</option>
@@ -153,7 +158,7 @@ export default function ConsentsPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Company Name</label>
+              <label className="text-[13px] font-medium text-muted-foreground">Company Name</label>
               <Input
                 placeholder="Optional"
                 value={createCompanyName}
@@ -161,7 +166,7 @@ export default function ConsentsPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Org Number</label>
+              <label className="text-[13px] font-medium text-muted-foreground">Org Number</label>
               <Input
                 placeholder="Optional"
                 value={createOrgNumber}
@@ -169,7 +174,7 @@ export default function ConsentsPage() {
               />
             </div>
             {createError && (
-              <p className="text-sm text-destructive">{createError}</p>
+              <p className="text-sm text-[#f87171]">{createError}</p>
             )}
           </div>
           <DialogFooter>
@@ -191,8 +196,8 @@ export default function ConsentsPage() {
       />
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base font-semibold">
             {filtered.length} consent{filtered.length !== 1 ? 's' : ''}
           </CardTitle>
         </CardHeader>
@@ -200,7 +205,7 @@ export default function ConsentsPage() {
           {loading ? (
             <p className="text-sm text-muted-foreground">Loading...</p>
           ) : filtered.length === 0 ? (
-            <div className="flex items-center justify-center rounded-md border border-dashed p-8 text-sm text-muted-foreground">
+            <div className="flex items-center justify-center rounded-lg border border-dashed border-border/60 p-8 text-sm text-muted-foreground">
               No consents found.
             </div>
           ) : (
@@ -222,14 +227,14 @@ export default function ConsentsPage() {
                     onClick={() => router.push(`/consents/${consent.id}`)}
                   >
                     <TableCell className="font-medium">{consent.name}</TableCell>
-                    <TableCell>{PROVIDER_LABELS[consent.provider] ?? consent.provider}</TableCell>
-                    <TableCell>{consent.company_name ?? consent.org_number ?? '—'}</TableCell>
+                    <TableCell className="text-muted-foreground">{consent.provider ? (PROVIDER_LABELS[consent.provider] ?? consent.provider) : 'Not selected'}</TableCell>
+                    <TableCell className="text-muted-foreground">{consent.company_name ?? consent.org_number ?? '—'}</TableCell>
                     <TableCell>
                       <Badge variant={STATUS_VARIANTS[consent.status] ?? 'secondary'}>
                         {STATUS_LABELS[consent.status] ?? 'Unknown'}
                       </Badge>
                     </TableCell>
-                    <TableCell>{new Date(consent.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-muted-foreground">{new Date(consent.created_at).toLocaleDateString()}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

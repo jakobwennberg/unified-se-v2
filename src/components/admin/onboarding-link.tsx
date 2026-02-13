@@ -54,12 +54,12 @@ export function OnboardingLink({ consentId }: OnboardingLinkProps) {
       </CardHeader>
       <CardContent className="space-y-3">
         {error && (
-          <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+          <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-[#f87171]">{error}</div>
         )}
 
         {link ? (
           <div className="flex items-center gap-2">
-            <code className="flex-1 rounded-md border bg-muted p-3 text-xs break-all">
+            <code className="flex-1 rounded-md border border-border/50 bg-[#0d1321] p-3 text-xs break-all font-mono text-muted-foreground">
               {link}
             </code>
             <Button variant="outline" size="icon" onClick={handleCopy}>

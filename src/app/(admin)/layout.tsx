@@ -16,12 +16,14 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-background">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
-        <main className="flex-1 overflow-y-auto p-6">
-          {children}
+        <main className="flex-1 overflow-y-auto p-8">
+          <div className="mx-auto max-w-6xl" style={{ animation: 'fade-in 0.3s ease-out' }}>
+            {children}
+          </div>
         </main>
       </div>
     </div>

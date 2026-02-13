@@ -30,6 +30,7 @@ export function ConsentFilters({
       />
       <Select value={provider} onChange={(e) => onProviderChange(e.target.value)} className="w-40">
         <option value="">All providers</option>
+        <option value="none">Not Selected</option>
         <option value="fortnox">Fortnox</option>
         <option value="visma">Visma eEkonomi</option>
         <option value="bokio">Bokio</option>

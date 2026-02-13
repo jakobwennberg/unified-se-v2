@@ -45,7 +45,7 @@ const TabsList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
     <div
       ref={ref}
       className={cn(
-        'inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground',
+        'inline-flex h-10 items-center gap-1 border-b border-border pb-px',
         className,
       )}
       {...props}
@@ -61,17 +61,25 @@ interface TabsTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement>
 const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(
   ({ className, value, ...props }, ref) => {
     const context = React.useContext(TabsContext);
+    const isActive = context.value === value;
     return (
       <button
         ref={ref}
         className={cn(
-          'inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-          context.value === value && 'bg-background text-foreground shadow-sm',
+          'inline-flex items-center justify-center whitespace-nowrap px-3 py-2 text-sm font-medium transition-all duration-200 relative',
+          isActive
+            ? 'text-primary'
+            : 'text-muted-foreground hover:text-foreground',
           className,
         )}
         onClick={() => context.onValueChange(value)}
         {...props}
-      />
+      >
+        {props.children}
+        {isActive && (
+          <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+        )}
+      </button>
     );
   },
 );
@@ -88,7 +96,8 @@ const TabsContent = React.forwardRef<HTMLDivElement, TabsContentProps>(
     return (
       <div
         ref={ref}
-        className={cn('mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', className)}
+        className={cn('mt-4 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', className)}
+        style={{ animation: 'fade-in 0.2s ease-out' }}
         {...props}
       />
     );

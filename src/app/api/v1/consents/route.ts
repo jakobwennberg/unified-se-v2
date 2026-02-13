@@ -28,11 +28,11 @@ export async function POST(request: Request) {
   const body = await request.json();
   const { name, provider, orgNumber, companyName, systemSettingsId } = body;
 
-  if (!name || !provider) {
-    return NextResponse.json({ error: 'name and provider are required' }, { status: 400 });
+  if (!name) {
+    return NextResponse.json({ error: 'name is required' }, { status: 400 });
   }
 
-  if (!['fortnox', 'visma', 'briox', 'bokio', 'bjornlunden', 'manual-sie'].includes(provider)) {
+  if (provider && !['fortnox', 'visma', 'briox', 'bokio', 'bjornlunden', 'manual-sie'].includes(provider)) {
     return NextResponse.json({ error: 'provider must be fortnox, visma, briox, bokio, bjornlunden, or manual-sie' }, { status: 400 });
   }
 
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     tenant_id: auth.tenantId,
     name,
     status: 0,
-    provider,
+    provider: provider ?? null,
     org_number: orgNumber ?? null,
     company_name: companyName ?? null,
     system_settings_id: systemSettingsId ?? null,

@@ -39,6 +39,10 @@ export async function resolveConsent(tenantId: string, consentId: string): Promi
     throw { status: 403, message: 'Consent is not in Accepted status' };
   }
 
+  if (!consent.provider) {
+    throw { status: 400, message: 'Consent has no provider set — customer must complete onboarding first' };
+  }
+
   // manual-sie: no tokens needed — data comes from sie_uploads table
   if (consent.provider === 'manual-sie') {
     return { consent, accessToken: '' };

@@ -37,79 +37,86 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="rounded-lg border bg-card p-6 shadow-sm">
-      <div className="mb-6 text-center">
-        <h1 className="text-2xl font-bold">Create account</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Get started with Arcim Sync for free
+    <div className="space-y-8" style={{ animation: 'fade-in 0.4s ease-out' }}>
+      {/* Brand header */}
+      <div className="text-center">
+        <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/15 ring-1 ring-primary/20">
+          <span className="font-serif text-2xl text-primary">A</span>
+        </div>
+        <h1 className="font-serif text-2xl tracking-tight">Create account</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Get started with Arcim for free
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {error && (
-          <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-            {error}
+      {/* Form card */}
+      <div className="rounded-xl border border-border/60 bg-card p-6 shadow-[0_4px_24px_rgba(0,0,0,0.25)]">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-[#f87171]">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <label htmlFor="name" className="text-[13px] font-medium text-muted-foreground">
+              Name
+            </label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="flex h-10 w-full rounded-md border border-input bg-[#0d1321] px-3 py-2 text-sm text-foreground transition-colors duration-200 placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:border-primary/50"
+              placeholder="Your name"
+            />
           </div>
-        )}
 
-        <div className="space-y-2">
-          <label htmlFor="name" className="text-sm font-medium">
-            Name
-          </label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            placeholder="Your name"
-          />
-        </div>
+          <div className="space-y-2">
+            <label htmlFor="email" className="text-[13px] font-medium text-muted-foreground">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="flex h-10 w-full rounded-md border border-input bg-[#0d1321] px-3 py-2 text-sm text-foreground transition-colors duration-200 placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:border-primary/50"
+              placeholder="you@example.com"
+            />
+          </div>
 
-        <div className="space-y-2">
-          <label htmlFor="email" className="text-sm font-medium">
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            placeholder="you@example.com"
-          />
-        </div>
+          <div className="space-y-2">
+            <label htmlFor="password" className="text-[13px] font-medium text-muted-foreground">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={8}
+              className="flex h-10 w-full rounded-md border border-input bg-[#0d1321] px-3 py-2 text-sm text-foreground transition-colors duration-200 placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:border-primary/50"
+              placeholder="At least 8 characters"
+            />
+          </div>
 
-        <div className="space-y-2">
-          <label htmlFor="password" className="text-sm font-medium">
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={8}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            placeholder="At least 8 characters"
-          />
-        </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-[0_1px_2px_rgba(201,168,76,0.3)] transition-all duration-200 hover:bg-[#d4b455] hover:shadow-[0_2px_8px_rgba(201,168,76,0.25)] disabled:opacity-40"
+          >
+            {loading ? 'Creating account...' : 'Create account'}
+          </button>
+        </form>
+      </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-        >
-          {loading ? 'Creating account...' : 'Create account'}
-        </button>
-      </form>
-
-      <p className="mt-4 text-center text-sm text-muted-foreground">
+      <p className="text-center text-[13px] text-muted-foreground">
         Already have an account?{' '}
-        <Link href="/login" className="text-primary hover:underline">
+        <Link href="/login" className="text-primary transition-colors hover:text-[#d4b455]">
           Sign in
         </Link>
       </p>

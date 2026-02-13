@@ -28,6 +28,70 @@ export function formatRatio(value: number | null | undefined): string {
   return value.toFixed(2);
 }
 
+// ── Color helpers ──
+
+type Sentiment = 'positive' | 'negative' | 'neutral';
+
+function getSEKSentiment(value: number | null | undefined): Sentiment {
+  if (value == null) return 'neutral';
+  if (value > 0) return 'positive';
+  if (value < 0) return 'negative';
+  return 'neutral';
+}
+
+function getPctSentiment(value: number | null | undefined): Sentiment {
+  if (value == null) return 'neutral';
+  if (value > 0) return 'positive';
+  if (value < 0) return 'negative';
+  return 'neutral';
+}
+
+function getRatioSentiment(key: string, value: number | null | undefined): Sentiment {
+  if (value == null) return 'neutral';
+  // Liquidity ratios: > 1 is good
+  if (key === 'cashRatio' || key === 'quickRatio' || key === 'currentRatio') {
+    if (value >= 1.5) return 'positive';
+    if (value < 1.0) return 'negative';
+    return 'neutral';
+  }
+  // Debt/equity: lower is better
+  if (key === 'debtToEquityRatio' || key === 'deRatio') {
+    if (value <= 1.0) return 'positive';
+    if (value > 3.0) return 'negative';
+    return 'neutral';
+  }
+  return 'neutral';
+}
+
+function getStatSentiment(key: string, value: number | null | undefined): Sentiment {
+  if (value == null) return 'neutral';
+  // P&L items where positive is good
+  if (['netSales', 'netIncome', 'ebitda', 'cashAndBank'].includes(key)) {
+    return getSEKSentiment(value);
+  }
+  // Margin/pct items
+  if (['operatingMargin', 'equityRatio', 'roe'].includes(key)) {
+    return getPctSentiment(value);
+  }
+  // Current ratio
+  if (key === 'currentRatio') {
+    return getRatioSentiment(key, value);
+  }
+  return 'neutral';
+}
+
+function sentimentColor(s: Sentiment): string {
+  if (s === 'positive') return 'text-green-400/70';
+  if (s === 'negative') return 'text-red-400/70';
+  return '';
+}
+
+function sentimentBorder(s: Sentiment): string {
+  if (s === 'positive') return 'border-l-green-500/40';
+  if (s === 'negative') return 'border-l-red-500/40';
+  return 'border-l-border';
+}
+
 // ── KPI group definitions ──
 
 export const KPI_GROUPS = [
@@ -135,6 +199,23 @@ function formatKPIValue(key: string, type: string, kpis: KPIValues): string {
   return formatRatio(val as number);
 }
 
+/** Determine value color for detail table rows */
+function getDetailValueSentiment(key: string, type: string, value: number | null | boolean | undefined): Sentiment {
+  if (value == null || typeof value === 'boolean') return 'neutral';
+  const v = value as number;
+  // Income statement items: profit lines are green if positive, cost lines are expected negative
+  if (type === 'sek') {
+    // Revenue, profit, subtotals — positive is good
+    if (['netSales', 'totalOperatingIncome', 'grossProfit', 'ebitda', 'ebit', 'resultBeforeTax', 'netIncome', 'cashAndBank', 'adjustedEquity', 'workingCapital'].includes(key)) {
+      return getSEKSentiment(v);
+    }
+    return 'neutral';
+  }
+  if (type === 'pct') return getPctSentiment(v);
+  if (type === 'ratio') return getRatioSentiment(key, v);
+  return 'neutral';
+}
+
 // ── Headline Stats component ──
 
 interface StatDef {
@@ -171,10 +252,10 @@ export function HeadlineStats({ kpis }: HeadlineStatsProps) {
             const raw = kpis[stat.key];
             const value = typeof raw === 'number' ? raw : null;
             return (
-              <Card key={stat.key}>
+              <Card key={stat.key} className="border-l-3 border-l-border">
                 <CardContent className="px-4 py-3">
                   <p className="text-xs text-muted-foreground">{stat.label}</p>
-                  <p className="mt-1 text-lg font-semibold font-mono tabular-nums">
+                  <p className="mt-1 text-xl font-semibold font-mono tabular-nums">
                     {stat.format(value)}
                   </p>
                 </CardContent>
@@ -204,14 +285,18 @@ export function KPIDetailTables({ kpis }: KPIDetailTablesProps) {
           <CardContent>
             <table className="w-full text-sm">
               <tbody>
-                {group.items.map(([label, key, type]) => (
-                  <tr key={key} className="border-b last:border-0">
-                    <td className="py-1.5 text-muted-foreground">{label}</td>
-                    <td className="py-1.5 text-right font-mono">
-                      {formatKPIValue(key, type, kpis)}
-                    </td>
-                  </tr>
-                ))}
+                {group.items.map(([label, key, type]) => {
+                  const val = kpis[key];
+                  const sentiment = getDetailValueSentiment(key, type, val);
+                  return (
+                    <tr key={key} className="border-b last:border-0">
+                      <td className="py-1.5 text-muted-foreground">{label}</td>
+                      <td className={`py-1.5 text-right font-mono ${sentimentColor(sentiment)}`}>
+                        {formatKPIValue(key, type, kpis)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </CardContent>

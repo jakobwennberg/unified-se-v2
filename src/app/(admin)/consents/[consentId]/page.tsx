@@ -55,7 +55,7 @@ const RESOURCE_LABELS: Record<string, string> = {
 interface ConsentDetail {
   id: string;
   name: string;
-  provider: string;
+  provider: string | null;
   company_name: string | null;
   org_number: string | null;
   status: number;
@@ -159,7 +159,7 @@ function SyncOverlay({ consentId }: { consentId: string }) {
                 <><Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /><span className="text-primary">Syncing</span></>
               )}
               {r.status === 'completed' && (
-                <><CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /><span className="text-emerald-600">{r.records_synced ?? 0} records</span></>
+                <><CheckCircle2 className="h-3.5 w-3.5 text-[#3fb950]" /><span className="text-[#3fb950]">{r.records_synced ?? 0} records</span></>
               )}
               {r.status === 'failed' && (
                 <><XCircle className="h-3.5 w-3.5 text-destructive" /><span className="text-destructive">Failed</span></>
@@ -256,7 +256,7 @@ export default function ConsentDetailPage() {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
-        <h1 className="text-2xl font-bold">{consent.name}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{consent.name}</h1>
         <Badge variant={STATUS_VARIANTS[consent.status] ?? 'secondary'}>
           {STATUS_LABELS[consent.status] ?? 'Unknown'}
         </Badge>
@@ -274,33 +274,33 @@ export default function ConsentDetailPage() {
         <TabsContent value="details">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Consent Details</CardTitle>
+              <CardTitle className="text-base font-semibold">Consent Details</CardTitle>
             </CardHeader>
             <CardContent>
-              <dl className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <dt className="font-medium text-muted-foreground">ID</dt>
-                  <dd className="font-mono">{consent.id}</dd>
+              <dl className="grid grid-cols-2 gap-6 text-sm">
+                <div className="space-y-1">
+                  <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">ID</dt>
+                  <dd className="font-mono text-xs text-muted-foreground">{consent.id}</dd>
                 </div>
-                <div>
-                  <dt className="font-medium text-muted-foreground">Provider</dt>
-                  <dd>{PROVIDER_LABELS[consent.provider] ?? consent.provider}</dd>
+                <div className="space-y-1">
+                  <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Provider</dt>
+                  <dd className="font-medium">{consent.provider ? (PROVIDER_LABELS[consent.provider] ?? consent.provider) : 'Awaiting customer selection'}</dd>
                 </div>
-                <div>
-                  <dt className="font-medium text-muted-foreground">Company</dt>
-                  <dd>{consent.company_name ?? '—'}</dd>
+                <div className="space-y-1">
+                  <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Company</dt>
+                  <dd className="font-medium">{consent.company_name ?? '—'}</dd>
                 </div>
-                <div>
-                  <dt className="font-medium text-muted-foreground">Org Number</dt>
-                  <dd>{consent.org_number ?? '—'}</dd>
+                <div className="space-y-1">
+                  <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Org Number</dt>
+                  <dd className="font-medium">{consent.org_number ?? '—'}</dd>
                 </div>
-                <div>
-                  <dt className="font-medium text-muted-foreground">Created</dt>
-                  <dd>{new Date(consent.created_at).toLocaleString()}</dd>
+                <div className="space-y-1">
+                  <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Created</dt>
+                  <dd className="font-medium">{new Date(consent.created_at).toLocaleString()}</dd>
                 </div>
-                <div>
-                  <dt className="font-medium text-muted-foreground">Updated</dt>
-                  <dd>{new Date(consent.updated_at).toLocaleString()}</dd>
+                <div className="space-y-1">
+                  <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Updated</dt>
+                  <dd className="font-medium">{new Date(consent.updated_at).toLocaleString()}</dd>
                 </div>
               </dl>
 
@@ -325,7 +325,7 @@ export default function ConsentDetailPage() {
               {consent.status === 1 && syncing ? (
                 <SyncOverlay consentId={consentId} />
               ) : consent.status === 1 ? (
-                <ResourceBrowser api={apiClient} consentId={consentId} provider={consent.provider} />
+                <ResourceBrowser api={apiClient} consentId={consentId} provider={consent.provider!} />
               ) : (
                 <p className="text-sm text-muted-foreground">
                   Data Explorer is only available for accepted consents.
@@ -344,7 +344,7 @@ export default function ConsentDetailPage() {
                 </CardContent>
               </Card>
             ) : (
-              <KPIPanel consentId={consentId} provider={consent.provider} />
+              <KPIPanel consentId={consentId} provider={consent.provider!} />
             )}
           </TabsContent>
         )}

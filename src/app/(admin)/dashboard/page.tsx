@@ -35,7 +35,7 @@ export default async function DashboardPage() {
   if (!tenant) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">Setting up your account... Please refresh in a moment.</p>
       </div>
     );
@@ -50,8 +50,13 @@ export default async function DashboardPage() {
   ]);
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Overview of your accounting integrations
+        </p>
+      </div>
 
       <StatsCards
         totalConsents={consentsResult.count ?? 0}
@@ -62,15 +67,15 @@ export default async function DashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Recent Consents</CardTitle>
+          <CardTitle className="text-base font-semibold">Recent Consents</CardTitle>
         </CardHeader>
         <CardContent>
           {!recentConsents.data?.length ? (
             <p className="text-sm text-muted-foreground">No consents yet. Create one from the Consents page.</p>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {recentConsents.data.map((consent: Record<string, unknown>) => (
-                <div key={consent.id as string} className="flex items-center justify-between rounded-md border p-3">
+                <div key={consent.id as string} className="flex items-center justify-between rounded-lg border border-border/50 bg-accent/30 px-4 py-3 transition-colors hover:bg-accent/50">
                   <div>
                     <p className="text-sm font-medium">{consent.name as string}</p>
                     <p className="text-xs text-muted-foreground">

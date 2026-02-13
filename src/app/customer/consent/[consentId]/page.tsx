@@ -7,7 +7,7 @@ import { ConsentStatusCard } from '@/components/customer/consent-status-card';
 interface ConsentData {
   id: string;
   name: string;
-  provider: string;
+  provider: string | null;
   company_name: string | null;
   org_number: string | null;
   status: number;
@@ -41,15 +41,18 @@ export default function CustomerConsentPage() {
   }, [fetchConsent]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-      {loading && <p className="text-muted-foreground">Loading...</p>}
-      {error && <p className="text-destructive">{error}</p>}
-      {consent && (
-        <ConsentStatusCard
-          consent={consent}
-          onRevoked={fetchConsent}
-        />
-      )}
+    <div className="relative flex min-h-screen items-center justify-center p-4">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_#141c2b_0%,_#0a0f1a_60%)]" />
+      <div className="relative z-10">
+        {loading && <p className="text-muted-foreground">Loading...</p>}
+        {error && <p className="text-[#f87171]">{error}</p>}
+        {consent && (
+          <ConsentStatusCard
+            consent={consent}
+            onRevoked={fetchConsent}
+          />
+        )}
+      </div>
     </div>
   );
 }

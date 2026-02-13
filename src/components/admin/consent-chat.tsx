@@ -8,7 +8,7 @@ import remarkGfm from 'remark-gfm';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Send, Bot, User, AlertCircle, Sparkles } from 'lucide-react';
+import { Loader2, Send, Bot, User, AlertCircle, MessageSquareText } from 'lucide-react';
 
 interface ConsentChatProps {
   consentId: string;
@@ -125,10 +125,10 @@ export function ConsentChat({ consentId }: ConsentChatProps) {
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full space-y-6 text-center">
               <div className="rounded-full bg-muted p-4">
-                <Sparkles className="h-8 w-8 text-muted-foreground" />
+                <MessageSquareText className="h-8 w-8 text-muted-foreground" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-lg font-semibold">AI Accounting Assistant</h3>
+                <h3 className="font-serif text-lg tracking-tight">AI Accounting Assistant</h3>
                 <p className="text-sm text-muted-foreground max-w-sm">
                   Ask questions about your accounting data. I can query invoices, calculate KPIs, and more.
                 </p>
@@ -138,7 +138,7 @@ export function ConsentChat({ consentId }: ConsentChatProps) {
                   <button
                     key={text}
                     onClick={() => handleSuggestion(text)}
-                    className="text-left text-sm px-3 py-2 rounded-lg border border-border hover:bg-muted transition-colors"
+                    className="text-left text-sm px-3 py-2 rounded-lg border border-border/60 text-muted-foreground hover:bg-accent/50 hover:text-foreground hover:border-border transition-all duration-150"
                   >
                     {text}
                   </button>
@@ -212,7 +212,7 @@ export function ConsentChat({ consentId }: ConsentChatProps) {
 
         {/* Error display */}
         {error && (
-          <div className="mx-4 mb-2 flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+          <div className="mx-4 mb-2 flex items-center gap-2 text-sm text-[#f87171] bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
             <span>Something went wrong. Please try again.</span>
           </div>

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, FileCheck, Key, Settings, Sparkles } from 'lucide-react';
+import { LayoutDashboard, FileCheck, Key, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -10,20 +10,25 @@ const navItems = [
   { href: '/consents', label: 'Consents', icon: FileCheck },
   { href: '/api-keys', label: 'API Keys', icon: Key },
   { href: '/settings', label: 'Settings', icon: Settings },
-  { href: '/generate-company', label: 'Generate Company', icon: Sparkles },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r bg-card">
-      <div className="flex h-14 items-center border-b px-6">
-        <Link href="/dashboard" className="text-lg font-bold">
-          Arcim Sync
+    <aside className="flex h-screen w-64 flex-col border-r border-border/60 bg-[#0d1321]">
+      {/* Brand */}
+      <div className="flex h-16 items-center border-b border-border/60 px-6">
+        <Link href="/dashboard" className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          Accounting API
         </Link>
       </div>
-      <nav className="flex-1 space-y-1 p-4">
+
+      {/* Navigation */}
+      <nav className="flex-1 space-y-0.5 px-3 py-4">
+        <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60">
+          Platform
+        </p>
         {navItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
           return (
@@ -31,18 +36,31 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-150',
                 isActive
                   ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground',
               )}
             >
-              <item.icon className="h-4 w-4" />
+              <item.icon className={cn(
+                'h-[18px] w-[18px] transition-colors',
+                isActive ? 'text-primary' : 'text-muted-foreground/60 group-hover:text-foreground',
+              )} />
               {item.label}
+              {isActive && (
+                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+              )}
             </Link>
           );
         })}
       </nav>
+
+      {/* Footer */}
+      <div className="border-t border-border/60 px-6 py-4">
+        <p className="text-[11px] text-muted-foreground/50">
+          Arcim v1.0
+        </p>
+      </div>
     </aside>
   );
 }

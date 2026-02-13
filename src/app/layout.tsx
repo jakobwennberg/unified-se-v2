@@ -1,13 +1,24 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Outfit, DM_Serif_Text } from 'next/font/google';
 import { SupabaseProvider } from '@/components/providers/supabase-provider';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const outfit = Outfit({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+});
+
+const dmSerif = DM_Serif_Text({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-serif',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
-  title: 'Arcim Sync Dashboard',
-  description: 'Manage your Swedish accounting integrations',
+  title: 'Arcim — Swedish Accounting Integration',
+  description: 'Unified API for Swedish accounting systems',
 };
 
 export default function RootLayout({
@@ -16,8 +27,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className="dark">
+      <body className={`${outfit.variable} ${dmSerif.variable} font-sans`}>
         <SupabaseProvider>
           {children}
         </SupabaseProvider>

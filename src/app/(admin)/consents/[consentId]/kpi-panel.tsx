@@ -2,10 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { HeadlineStats, KPIDetailTables, type KPIValues } from '@/components/shared/kpi-display';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { BalanceComposition } from '@/components/charts/balance-composition';
+import { MarginBars } from '@/components/charts/margin-bars';
+import { LiquidityGauge } from '@/components/charts/liquidity-gauge';
+import { CapitalDonut } from '@/components/charts/capital-donut';
 
 interface KPIMetadata {
   provider: string;
@@ -39,6 +43,14 @@ function defaultDates() {
   };
 }
 
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="font-serif text-lg tracking-wide text-foreground/80">
+      {children}
+    </h3>
+  );
+}
+
 export function KPIPanel({ consentId, provider }: KPIPanelProps) {
   const isManualSie = provider === 'manual-sie';
   const defaults = defaultDates();
@@ -49,6 +61,7 @@ export function KPIPanel({ consentId, provider }: KPIPanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(defaults.startDate);
   const [endDate, setEndDate] = useState(defaults.endDate);
+  const [detailsOpen, setDetailsOpen] = useState(true);
 
   const fetchKpis = useCallback(async (start?: string, end?: string) => {
     setLoading(true);
@@ -108,7 +121,7 @@ export function KPIPanel({ consentId, provider }: KPIPanelProps) {
   if (!kpis) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Date range picker (hidden for manual-sie and account-balances source) */}
       {!isManualSie && metadata?.source !== 'account-balances' && (
         <Card>
@@ -194,8 +207,99 @@ export function KPIPanel({ consentId, provider }: KPIPanelProps) {
         </Card>
       )}
 
-      <HeadlineStats kpis={kpis} />
-      <KPIDetailTables kpis={kpis} />
+      {/* ── Executive Summary ── */}
+      <section className="space-y-4">
+        <SectionHeader>Executive Summary</SectionHeader>
+        <HeadlineStats kpis={kpis} />
+      </section>
+
+      {/* ── Profitability ── */}
+      <section className="space-y-4">
+        <SectionHeader>Profitability</SectionHeader>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold">Margins</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MarginBars kpis={kpis} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold">Returns</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4 py-4">
+                {[
+                  { label: 'Return on Assets (ROA)', key: 'roa' },
+                  { label: 'Return on Equity (ROE)', key: 'roe' },
+                  { label: 'Return on Capital Employed (ROCE)', key: 'roce' },
+                ].map(({ label, key }) => {
+                  const v = kpis[key];
+                  const val = typeof v === 'number' ? v : null;
+                  const color = val == null ? 'text-muted-foreground' : val >= 0 ? 'text-green-400/70' : 'text-red-400/70';
+                  return (
+                    <div key={key} className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{label}</span>
+                      <span className={`text-lg font-mono font-semibold tabular-nums ${color}`}>
+                        {val != null ? `${val.toFixed(1)}%` : '—'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* ── Financial Position ── */}
+      <section className="space-y-4">
+        <SectionHeader>Financial Position</SectionHeader>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold">Balance Composition</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BalanceComposition kpis={kpis} />
+          </CardContent>
+        </Card>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold">Liquidity Ratios</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <LiquidityGauge kpis={kpis} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold">Capital Structure</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CapitalDonut kpis={kpis} />
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* ── Detailed Breakdown ── */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <SectionHeader>Detailed Breakdown</SectionHeader>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setDetailsOpen(!detailsOpen)}
+            className="text-xs text-muted-foreground"
+          >
+            {detailsOpen ? 'Collapse' : 'Expand'}
+          </Button>
+        </div>
+        {detailsOpen && <KPIDetailTables kpis={kpis} />}
+      </section>
     </div>
   );
 }

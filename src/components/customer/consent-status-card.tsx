@@ -30,7 +30,7 @@ interface ConsentStatusCardProps {
   consent: {
     id: string;
     name: string;
-    provider: string;
+    provider: string | null;
     company_name: string | null;
     org_number: string | null;
     status: number;
@@ -68,13 +68,13 @@ export function ConsentStatusCard({ consent, onRevoked }: ConsentStatusCardProps
   return (
     <Card className="mx-auto max-w-md">
       <CardHeader>
-        <CardTitle className="text-lg">Connection Status</CardTitle>
+        <CardTitle className="text-base font-semibold">Connection Status</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <dl className="space-y-3 text-sm">
           <div className="flex justify-between">
             <dt className="text-muted-foreground">Provider</dt>
-            <dd className="font-medium">{PROVIDER_LABELS[consent.provider] ?? consent.provider}</dd>
+            <dd className="font-medium">{consent.provider ? (PROVIDER_LABELS[consent.provider] ?? consent.provider) : 'Not selected'}</dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-muted-foreground">Company</dt>

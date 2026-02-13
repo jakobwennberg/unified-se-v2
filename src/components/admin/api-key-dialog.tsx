@@ -81,13 +81,13 @@ export function ApiKeyDialog({ open, onOpenChange, onCreated }: ApiKeyDialogProp
         </DialogHeader>
 
         {error && (
-          <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+          <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-[#f87171]">{error}</div>
         )}
 
         {createdKey ? (
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <code className="flex-1 rounded-md border bg-muted p-3 text-sm break-all">
+              <code className="flex-1 rounded-md border border-border/50 bg-[#0d1321] p-3 text-sm break-all font-mono text-primary">
                 {createdKey}
               </code>
               <Button variant="outline" size="icon" onClick={handleCopy}>
@@ -101,7 +101,7 @@ export function ApiKeyDialog({ open, onOpenChange, onCreated }: ApiKeyDialogProp
         ) : (
           <div className="space-y-4">
             <div className="space-y-2">
-              <label htmlFor="key-name" className="text-sm font-medium">Name</label>
+              <label htmlFor="key-name" className="text-[13px] font-medium text-muted-foreground">Name</label>
               <Input
                 id="key-name"
                 value={name}
@@ -111,7 +111,7 @@ export function ApiKeyDialog({ open, onOpenChange, onCreated }: ApiKeyDialogProp
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="key-expiry" className="text-sm font-medium">Expiry</label>
+              <label htmlFor="key-expiry" className="text-[13px] font-medium text-muted-foreground">Expiry</label>
               <Select
                 id="key-expiry"
                 value={expiresInDays}

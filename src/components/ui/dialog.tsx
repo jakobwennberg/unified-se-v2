@@ -15,7 +15,10 @@ function Dialog({ open, onOpenChange, children }: DialogProps) {
 
   return (
     <div className="fixed inset-0 z-50">
-      <div className="fixed inset-0 bg-black/50" onClick={() => onOpenChange(false)} />
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={() => onOpenChange(false)}
+      />
       <div className="fixed inset-0 flex items-center justify-center p-4">
         {children}
       </div>
@@ -28,15 +31,16 @@ const DialogContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTML
     <div
       ref={ref}
       className={cn(
-        'relative z-50 w-full max-w-lg rounded-lg border bg-background p-6 shadow-lg',
+        'relative z-50 w-full max-w-lg rounded-xl border bg-card p-6 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]',
         className,
       )}
+      style={{ animation: 'fade-in 0.15s ease-out' }}
       {...props}
     >
       {children}
       {onClose && (
         <button
-          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
+          className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground/60 transition-colors hover:text-foreground hover:bg-accent"
           onClick={onClose}
         >
           <X className="h-4 w-4" />

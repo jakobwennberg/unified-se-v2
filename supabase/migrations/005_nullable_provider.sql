@@ -1,0 +1,1 @@
+ALTER TABLE consents ALTER COLUMN provider DROP NOT NULL;

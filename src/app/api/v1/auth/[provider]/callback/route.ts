@@ -36,7 +36,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
 
   // Try normal authentication first
   const auth = await authenticateRequest(request);
-  let consentRows: { id: string; provider: string; tenant_id: string }[] | null = null;
+  let consentRows: { id: string; provider: string | null; tenant_id: string }[] | null = null;
 
   if (auth) {
     // Verify the consent belongs to this tenant
@@ -83,7 +83,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
   }
 
   const consent = consentRows[0]!;
-  if (consent.provider !== provider) {
+  if (consent.provider && consent.provider !== provider) {
     return NextResponse.json({ error: `Consent provider mismatch: expected ${consent.provider}, got ${provider}` }, { status: 400 });
   }
 
@@ -147,7 +147,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
   // Update consent status to Accepted (1)
   const now = new Date().toISOString();
   const newEtag = randomUUID();
-  await supabase.from('consents').update({ status: 1, etag: newEtag, updated_at: now }).eq('id', consentId);
+  const consentUpdate: Record<string, unknown> = { status: 1, etag: newEtag, updated_at: now };
+  if (!consent.provider) {
+    consentUpdate.provider = provider;
+  }
+  await supabase.from('consents').update(consentUpdate).eq('id', consentId);
 
   // Trigger initial sync in background (fire-and-forget)
   syncConsent({

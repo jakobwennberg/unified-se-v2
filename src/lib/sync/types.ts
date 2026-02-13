@@ -90,6 +90,9 @@ export interface ExtractedFields {
 
 export type OnProgressFn = (fetched: number, resourceType: ResourceType) => void;
 
+/** Called during hydration with each batch of mapped DTOs for incremental upsert. */
+export type OnBatchFn = (batch: Record<string, unknown>[]) => Promise<void>;
+
 // ============================================
 // Provider resource type map helper
 // ============================================

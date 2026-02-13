@@ -13,7 +13,7 @@ import {
 export const FORTNOX_BASE_URL = 'https://api.fortnox.se/3';
 export const FORTNOX_AUTH_URL = 'https://apps.fortnox.se/oauth-v1/auth';
 export const FORTNOX_TOKEN_URL = 'https://apps.fortnox.se/oauth-v1/token';
-export const FORTNOX_RATE_LIMIT: RateLimitConfig = { maxRequests: 25, windowMs: 1000 };
+export const FORTNOX_RATE_LIMIT: RateLimitConfig = { maxRequests: 4, windowMs: 1000 };
 
 export const FORTNOX_RESOURCE_CONFIGS: Partial<Record<ResourceType, FortnoxResourceConfig>> = {
   [ResourceType.SalesInvoices]: {

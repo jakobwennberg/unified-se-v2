@@ -13,7 +13,7 @@ import { BokioClient } from '@/lib/providers/bokio/client';
 import { BjornLundenClient } from '@/lib/providers/bjornlunden/client';
 import { mapSieAccounts, mapSieJournals, mapSieCompanyInfo } from '@/lib/providers/manual-sie/mapper';
 import type { SIEParseResult } from '@/lib/providers/manual-sie/parser';
-import type { OnProgressFn } from './types';
+import type { OnProgressFn, OnBatchFn } from './types';
 
 const fortnoxClient = new FortnoxClient();
 const vismaClient = new VismaClient();
@@ -57,12 +57,13 @@ export async function fetchAllForProvider(
   resourceType: ResourceType,
   resolved: ResolvedConsent,
   onProgress?: OnProgressFn,
+  onBatch?: OnBatchFn,
 ): Promise<Record<string, unknown>[]> {
   const { accessToken } = resolved;
 
   switch (provider) {
     case 'fortnox':
-      return fetchFortnox(resourceType, accessToken, onProgress);
+      return fetchFortnox(resourceType, accessToken, onProgress, onBatch);
     case 'visma':
       return fetchVisma(resourceType, accessToken, onProgress);
     case 'briox':
@@ -86,6 +87,7 @@ async function fetchFortnox(
   resourceType: ResourceType,
   accessToken: string,
   onProgress?: OnProgressFn,
+  onBatch?: OnBatchFn,
 ): Promise<Record<string, unknown>[]> {
   const config = FORTNOX_RESOURCE_CONFIGS[resourceType];
   if (!config) throw new Error(`Resource ${resourceType} not supported for fortnox`);
@@ -107,9 +109,11 @@ async function fetchFortnox(
 
   // Hydrate journals (VoucherRows) via detail fetches — batched to respect rate limits
   if (config.supportsEntryHydration) {
+    console.log(`[fortnox] Listed ${rawItems.length} journals, starting hydration...`);
     const BATCH_SIZE = 5;
-    const hydrated: Record<string, unknown>[] = [];
-    for (let i = 0; i < rawItems.length; i += BATCH_SIZE) {
+    const all: Record<string, unknown>[] = [];
+    const total = rawItems.length;
+    for (let i = 0; i < total; i += BATCH_SIZE) {
       const batch = rawItems.slice(i, i + BATCH_SIZE);
       const batchResults = await Promise.all(
         batch.map(async (item) => {
@@ -130,16 +134,21 @@ async function fetchFortnox(
           return item;
         }),
       );
-      hydrated.push(...batchResults);
+      const mapped = batchResults.map(config.mapper).map(m => stripRaw(m as Record<string, unknown>));
+      all.push(...mapped);
+      if (onBatch) await onBatch(mapped);
+      console.log(`[fortnox] Hydrating journals: ${Math.min(i + BATCH_SIZE, total)}/${total}`);
     }
-    return hydrated.map(config.mapper).map(m => stripRaw(m as Record<string, unknown>));
+    return all;
   }
 
   // Hydrate account balances via detail endpoint (/accounts/{Number})
   if (resourceType === ResourceType.AccountingAccounts && rawItems.length > 0) {
+    console.log(`[fortnox] Listed ${rawItems.length} accounts, starting hydration...`);
     const BATCH_SIZE = 5;
-    const hydrated: Record<string, unknown>[] = [];
-    for (let i = 0; i < rawItems.length; i += BATCH_SIZE) {
+    const all: Record<string, unknown>[] = [];
+    const total = rawItems.length;
+    for (let i = 0; i < total; i += BATCH_SIZE) {
       const batch = rawItems.slice(i, i + BATCH_SIZE);
       const batchResults = await Promise.all(
         batch.map(async (item) => {
@@ -160,9 +169,12 @@ async function fetchFortnox(
           return item;
         }),
       );
-      hydrated.push(...batchResults);
+      const mapped = batchResults.map(config.mapper).map(m => stripRaw(m as Record<string, unknown>));
+      all.push(...mapped);
+      if (onBatch) await onBatch(mapped);
+      console.log(`[fortnox] Hydrating accounts: ${Math.min(i + BATCH_SIZE, total)}/${total}`);
     }
-    return hydrated.map(config.mapper).map(m => stripRaw(m as Record<string, unknown>));
+    return all;
   }
 
   return rawItems.map(config.mapper).map(m => stripRaw(m as Record<string, unknown>));

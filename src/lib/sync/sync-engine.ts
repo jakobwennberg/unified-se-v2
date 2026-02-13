@@ -1,6 +1,6 @@
 import { resolveConsent } from '@/lib/api/resolve-consent';
 import type { ResourceType } from '@/lib/types/dto';
-import type { SyncOptions, SyncResult, ResourceSyncResult, SyncedResourceRow } from './types';
+import type { SyncOptions, SyncResult, ResourceSyncResult, SyncedResourceRow, OnBatchFn } from './types';
 import { fetchAllForProvider, getSupportedResourceTypes } from './fetch-all';
 import { extractFields } from './extract-fields';
 import { upsertSyncedResources, deleteStaleSyncedResources, updateSyncState } from './db';
@@ -44,17 +44,44 @@ export async function syncConsent(options: SyncOptions): Promise<SyncResult> {
         error_message: null,
       });
 
-      // Fetch all data with full hydration
+      // Build an onBatch callback for incremental upserts during hydration
+      let incrementalCount = 0;
+      const onBatch: OnBatchFn = async (batch) => {
+        const rows: SyncedResourceRow[] = batch.map((dto) => {
+          const fields = extractFields(resourceType, dto);
+          return {
+            consent_id: consentId,
+            tenant_id: tenantId,
+            provider,
+            resource_type: resourceType,
+            external_id: fields.external_id,
+            data: dto,
+            document_date: fields.document_date,
+            due_date: fields.due_date,
+            currency_code: fields.currency_code,
+            total_amount: fields.total_amount,
+            status: fields.status,
+            counterparty_name: fields.counterparty_name,
+            account_number: fields.account_number,
+            sync_batch_id: syncBatchId,
+            synced_at: new Date().toISOString(),
+          };
+        });
+        const count = await upsertSyncedResources(rows);
+        incrementalCount += count;
+      };
+
+      // Fetch all data with full hydration — onBatch upserts each batch as it arrives
       let dtos: Record<string, unknown>[];
       try {
-        dtos = await fetchAllForProvider(provider, resourceType, resolved);
+        dtos = await fetchAllForProvider(provider, resourceType, resolved, undefined, onBatch);
       } catch (fetchErr: unknown) {
         // On 401, try re-resolving consent for fresh token
         const e = fetchErr as { statusCode?: number; status?: number };
         if (e.statusCode === 401 || e.status === 401) {
           log(`[${resourceType}] Got 401, re-resolving consent`);
           resolved = await resolveConsent(tenantId, consentId);
-          dtos = await fetchAllForProvider(provider, resourceType, resolved);
+          dtos = await fetchAllForProvider(provider, resourceType, resolved, undefined, onBatch);
         } else {
           throw fetchErr;
         }
@@ -62,30 +89,33 @@ export async function syncConsent(options: SyncOptions): Promise<SyncResult> {
 
       log(`[${resourceType}] Fetched ${dtos.length} records in ${((Date.now() - resourceStart) / 1000).toFixed(1)}s`);
 
-      // Build rows with extracted fields
-      const rows: SyncedResourceRow[] = dtos.map((dto) => {
-        const fields = extractFields(resourceType, dto);
-        return {
-          consent_id: consentId,
-          tenant_id: tenantId,
-          provider,
-          resource_type: resourceType,
-          external_id: fields.external_id,
-          data: dto,
-          document_date: fields.document_date,
-          due_date: fields.due_date,
-          currency_code: fields.currency_code,
-          total_amount: fields.total_amount,
-          status: fields.status,
-          counterparty_name: fields.counterparty_name,
-          account_number: fields.account_number,
-          sync_batch_id: syncBatchId,
-          synced_at: new Date().toISOString(),
-        };
-      });
-
-      // Upsert in batches (returns deduplicated count)
-      const uniqueCount = await upsertSyncedResources(rows);
+      // If onBatch wasn't called (non-hydrated types), do a bulk upsert
+      let uniqueCount: number;
+      if (incrementalCount > 0) {
+        uniqueCount = incrementalCount;
+      } else {
+        const rows: SyncedResourceRow[] = dtos.map((dto) => {
+          const fields = extractFields(resourceType, dto);
+          return {
+            consent_id: consentId,
+            tenant_id: tenantId,
+            provider,
+            resource_type: resourceType,
+            external_id: fields.external_id,
+            data: dto,
+            document_date: fields.document_date,
+            due_date: fields.due_date,
+            currency_code: fields.currency_code,
+            total_amount: fields.total_amount,
+            status: fields.status,
+            counterparty_name: fields.counterparty_name,
+            account_number: fields.account_number,
+            sync_batch_id: syncBatchId,
+            synced_at: new Date().toISOString(),
+          };
+        });
+        uniqueCount = await upsertSyncedResources(rows);
+      }
 
       // Clean up stale records from previous batches
       await deleteStaleSyncedResources(consentId, resourceType, syncBatchId);

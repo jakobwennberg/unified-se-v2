@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { OnboardingLink } from '@/components/admin/onboarding-link';
 import { ArrowLeft, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { KPIPanel } from './kpi-panel';
+import { ConsentChat } from '@/components/admin/consent-chat';
 
 const STATUS_VARIANTS: Record<number, 'warning' | 'success' | 'destructive' | 'secondary'> = {
   0: 'warning',
@@ -265,6 +266,7 @@ export default function ConsentDetailPage() {
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="data">Data Explorer</TabsTrigger>
           {consent.status === 1 && <TabsTrigger value="kpis">KPIs</TabsTrigger>}
+          {consent.status === 1 && <TabsTrigger value="chat">AI Chat</TabsTrigger>}
           <TabsTrigger value="onboarding">Onboarding Link</TabsTrigger>
         </TabsList>
 
@@ -342,6 +344,20 @@ export default function ConsentDetailPage() {
               </Card>
             ) : (
               <KPIPanel consentId={consentId} provider={consent.provider} />
+            )}
+          </TabsContent>
+        )}
+
+        {consent.status === 1 && (
+          <TabsContent value="chat">
+            {syncing ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <SyncOverlay consentId={consentId} />
+                </CardContent>
+              </Card>
+            ) : (
+              <ConsentChat consentId={consentId} />
             )}
           </TabsContent>
         )}

@@ -200,7 +200,7 @@ export default function ConsentDetailPage() {
     setLoading(false);
   }, [consentId]);
 
-  // Check sync status on mount and poll while syncing
+  // Check sync status on mount, then poll every 3s only while syncing
   useEffect(() => {
     let active = true;
     const checkSync = async () => {
@@ -212,9 +212,10 @@ export default function ConsentDetailPage() {
       } catch { /* ignore */ }
     };
     checkSync();
+    if (!syncing) return () => { active = false; };
     const id = setInterval(checkSync, 3000);
     return () => { active = false; clearInterval(id); };
-  }, [consentId]);
+  }, [consentId, syncing]);
 
   useEffect(() => {
     fetchConsent();

@@ -119,7 +119,7 @@ function SyncOverlay({ consentId }: { consentId: string }) {
   if (done > 0 && done < summary.total) {
     const avgPerResource = elapsed / done;
     const remaining = Math.ceil(((summary.total - done) * avgPerResource) / 1000 / 60);
-    estimateText = remaining <= 1 ? 'Less than a minute remaining' : `~${remaining} minutes remaining`;
+    estimateText = `~${remaining <= 1 ? 1 : remaining} min remaining (up to 15 min on free plan)`;
   } else if (done === 0 && elapsedSec > 5) {
     estimateText = 'Starting sync...';
   } else if (done >= summary.total) {
@@ -132,6 +132,9 @@ function SyncOverlay({ consentId }: { consentId: string }) {
       <div className="text-center space-y-1">
         <p className="text-lg font-semibold">Syncing data from provider</p>
         <p className="text-sm text-muted-foreground">{estimateText}</p>
+        <p className="text-xs text-muted-foreground/70 mt-2">
+          This may take up to 15 minutes on the free plan due to provider rate limits.
+        </p>
       </div>
 
       {/* Progress bar */}

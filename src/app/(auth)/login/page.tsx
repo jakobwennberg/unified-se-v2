@@ -38,7 +38,7 @@ export default function LoginPage() {
         </div>
         <h1 className="font-serif text-2xl tracking-tight">Welcome back</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Sign in to your Arcim account
+          Sign in to your account
         </p>
       </div>
 

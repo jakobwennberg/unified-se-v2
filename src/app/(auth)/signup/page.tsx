@@ -45,7 +45,7 @@ export default function SignupPage() {
         </div>
         <h1 className="font-serif text-2xl tracking-tight">Create account</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Get started with Arcim for free
+          Get started for free
         </p>
       </div>
 

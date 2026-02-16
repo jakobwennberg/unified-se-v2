@@ -17,7 +17,7 @@ const dmSerif = DM_Serif_Text({
 });
 
 export const metadata: Metadata = {
-  title: 'Arcim — Swedish Accounting Integration',
+  title: 'Unified Accounting API',
   description: 'Unified API for Swedish accounting systems',
 };
 
@@ -28,7 +28,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={`${outfit.variable} ${dmSerif.variable} font-sans`}>
+      <body suppressHydrationWarning className={`${outfit.variable} ${dmSerif.variable} font-sans`}>
         <SupabaseProvider>
           {children}
         </SupabaseProvider>

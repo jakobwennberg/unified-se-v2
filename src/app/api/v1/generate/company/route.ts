@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/api/auth-middleware';
+import { checkAndIncrementAIUsage } from '@/lib/api/plan-limits';
 import { CompanyGenerator } from '@/lib/generate-company/company-generator';
 import { getAIConfig, hasAWSCredentials } from '@/lib/generate-company/config';
 import type { CompanyIndustry, CompanySize } from '@/lib/generate-company/types';
@@ -24,6 +25,12 @@ export async function POST(request: Request) {
       { error: 'AWS Bedrock credentials not configured' },
       { status: 503 },
     );
+  }
+
+  // Check AI usage limit
+  const aiCheck = await checkAndIncrementAIUsage(auth.tenantId);
+  if (!aiCheck.allowed) {
+    return NextResponse.json({ error: aiCheck.error }, { status: aiCheck.status });
   }
 
   let body: Record<string, unknown>;

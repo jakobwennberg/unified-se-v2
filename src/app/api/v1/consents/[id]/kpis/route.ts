@@ -3,7 +3,8 @@ import { authenticateRequest } from '@/lib/api/auth-middleware';
 import { resolveConsent } from '@/lib/api/resolve-consent';
 import { loadManualSieParsed } from '@/lib/sie/fetch-sie';
 import { calculateKPIs } from '@/lib/sie/kpi';
-import { getJournalKPIs } from '@/lib/sie/journal-kpis';
+import { getJournalKPIs, getMonthlyJournalKPIs } from '@/lib/sie/journal-kpis';
+import { calculateMonthlyKPIsFromSIE } from '@/lib/sie/monthly-kpis';
 
 export async function GET(
   request: Request,
@@ -29,14 +30,14 @@ export async function GET(
 
   const provider = resolved.consent.provider as string;
 
-  // Parse optional date range from query params
+  // Parse query params
   const url = new URL(request.url);
   const startDate = url.searchParams.get('startDate') ?? undefined;
   const endDate = url.searchParams.get('endDate') ?? undefined;
+  const granularity = url.searchParams.get('granularity');
 
   try {
     if (provider === 'manual-sie') {
-      // Manual SIE: use stored parsed SIE data
       const parsed = await loadManualSieParsed(consentId);
       if (!parsed) {
         return NextResponse.json(
@@ -45,6 +46,27 @@ export async function GET(
         );
       }
 
+      // Monthly granularity for manual-sie
+      if (granularity === 'monthly') {
+        if (parsed.transactions.length === 0) {
+          return NextResponse.json(
+            { error: 'No transaction data available for monthly KPI calculation. The SIE file must contain transaction-level data (#VER/#TRANS records).' },
+            { status: 422 },
+          );
+        }
+
+        const series = calculateMonthlyKPIsFromSIE(parsed);
+        return NextResponse.json({
+          data: series,
+          metadata: {
+            provider,
+            companyName: parsed.metadata.companyName,
+            orgNumber: parsed.metadata.orgNumber ?? null,
+          },
+        });
+      }
+
+      // Default: annual KPIs
       const kpis = calculateKPIs(parsed);
 
       return NextResponse.json({
@@ -59,7 +81,20 @@ export async function GET(
       });
     }
 
-    // All other providers: compute KPIs from synced data
+    // All other providers: synced data
+    if (granularity === 'monthly') {
+      const result = await getMonthlyJournalKPIs(consentId, { startDate, endDate });
+
+      return NextResponse.json({
+        data: result.series,
+        metadata: {
+          provider,
+          ...result.metadata,
+        },
+      });
+    }
+
+    // Default: annual KPIs
     // Preferred: account balances (IB/UB), fallback: journal entries
     const result = await getJournalKPIs(consentId, { startDate, endDate });
 
@@ -73,6 +108,9 @@ export async function GET(
   } catch (err: unknown) {
     console.error('KPI calculation error:', err);
     const message = err instanceof Error ? err.message : 'Failed to calculate KPIs';
-    return NextResponse.json({ error: message }, { status: 500 });
+    const status = message.includes('No transaction data') || message.includes('No journal data')
+      ? 422
+      : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

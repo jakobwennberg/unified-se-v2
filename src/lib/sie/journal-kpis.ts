@@ -11,8 +11,9 @@
  */
 import { createServiceClient } from '@/lib/supabase/server';
 import { calculateKPIs } from './kpi';
-import type { SIEBalance, SIEParseResult, SIEKPIs } from './types';
+import type { SIEBalance, SIEParseResult, SIEKPIs, MonthlyKPISeries } from './types';
 import type { JournalDto, AccountingAccountDto } from '@/lib/types/dto';
+import { calculateMonthlyKPIsFromJournals } from './monthly-kpis';
 import {
   SWEDISH_ACCOUNTS,
   CORPORATE_TAX_RATE,
@@ -511,6 +512,72 @@ export async function getJournalKPIs(
       entryCount,
       reconciled: balanced,
       reconciliationDrift: drift,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Monthly KPI orchestrator for synced providers
+// ---------------------------------------------------------------------------
+
+export interface MonthlyJournalKPIResult {
+  series: MonthlyKPISeries;
+  metadata: {
+    source: 'journals';
+    startDate: string;
+    endDate: string;
+    accountCount: number;
+    journalCount: number;
+    entryCount: number;
+  };
+}
+
+/**
+ * Compute monthly KPI series from synced provider data (journal entries).
+ *
+ * This always uses journal entries (not the account-balance preferred path)
+ * because monthly computation requires transaction-level dates.
+ */
+export async function getMonthlyJournalKPIs(
+  consentId: string,
+  options?: JournalKPIOptions,
+): Promise<MonthlyJournalKPIResult> {
+  const endDate = options?.endDate ?? new Date().toISOString().slice(0, 10);
+  const startDate =
+    options?.startDate ??
+    new Date(new Date(endDate).getTime() - 365 * 86_400_000).toISOString().slice(0, 10);
+
+  const supabase = await createServiceClient();
+
+  // Load accounting accounts
+  let accounts: AccountingAccountDto[] = [];
+  try {
+    const accountRows = await loadAllRows(supabase, consentId, 'accountingaccounts');
+    accounts = accountRows.map((row) => row.data as unknown as AccountingAccountDto);
+  } catch (err) {
+    console.warn('[monthly-journal-kpis] Could not load accounting accounts:', err instanceof Error ? err.message : err);
+  }
+
+  // Always use journal entries for monthly (need transaction dates)
+  const journalRows = await loadAllRows(supabase, consentId, 'journals');
+  const journals = journalRows.map((row) => row.data as unknown as JournalDto);
+
+  if (journals.length === 0) {
+    throw new Error('No journal data available for monthly KPI calculation');
+  }
+
+  const entryCount = journals.reduce((sum, j) => sum + j.entries.length, 0);
+  const series = calculateMonthlyKPIsFromJournals(journals, accounts, startDate, endDate);
+
+  return {
+    series,
+    metadata: {
+      source: 'journals',
+      startDate,
+      endDate,
+      accountCount: accounts.length,
+      journalCount: journals.length,
+      entryCount,
     },
   };
 }

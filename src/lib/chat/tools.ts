@@ -1,7 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import { getSyncedResources, getSyncState } from '@/lib/sync/db';
-import { getJournalKPIs } from '@/lib/sie/journal-kpis';
+import { getJournalKPIs, getMonthlyJournalKPIs } from '@/lib/sie/journal-kpis';
 import { createServiceClient } from '@/lib/supabase/server';
 
 /**
@@ -243,6 +243,39 @@ export function createChatTools(consentId: string) {
       execute: async ({ startDate, endDate }) => {
         const result = await getJournalKPIs(consentId, { startDate, endDate });
         return result;
+      },
+    }),
+
+    getMonthlyKPIs: tool({
+      description:
+        'Get monthly financial KPI trends over a period. Returns a curated subset of metrics per month (netSales, ebitda, netIncome, operatingMargin, currentRatio, cashAndBank) to show trends over time. Requires journal/transaction data with dates.',
+      inputSchema: z.object({
+        startDate: z.string().optional().describe('Start date for period (YYYY-MM-DD). Defaults to 12 months ago.'),
+        endDate: z.string().optional().describe('End date for period (YYYY-MM-DD). Defaults to today.'),
+      }),
+      execute: async ({ startDate, endDate }) => {
+        const result = await getMonthlyJournalKPIs(consentId, { startDate, endDate });
+        // Return curated subset to keep context manageable
+        return {
+          months: result.series.months.map((m) => ({
+            month: m.month,
+            netSales: m.kpis.netSales,
+            ebitda: m.kpis.ebitda,
+            netIncome: m.kpis.netIncome,
+            operatingMargin: m.kpis.operatingMargin,
+            currentRatio: m.kpis.currentRatio,
+            cashAndBank: m.kpis.cashAndBank,
+          })),
+          aggregate: {
+            netSales: result.series.aggregate.netSales,
+            ebitda: result.series.aggregate.ebitda,
+            netIncome: result.series.aggregate.netIncome,
+            operatingMargin: result.series.aggregate.operatingMargin,
+            currentRatio: result.series.aggregate.currentRatio,
+            cashAndBank: result.series.aggregate.cashAndBank,
+          },
+          metadata: result.series.metadata,
+        };
       },
     }),
 

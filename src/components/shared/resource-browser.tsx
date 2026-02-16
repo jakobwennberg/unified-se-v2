@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ChevronDown, ChevronRight, Braces, TableProperties } from 'lucide-react';
 
 const RESOURCE_TYPES = [
@@ -385,27 +386,28 @@ function ExpandableDetails({ record, keys }: { record: Record<string, unknown>; 
   if (nonEmpty.length === 0) return <span className="text-muted-foreground">—</span>;
 
   return (
-    <div>
+    <>
       <button
         type="button"
-        onClick={() => setOpen(!open)}
-        className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors ${
-          open
-            ? 'bg-primary/10 text-primary font-medium'
-            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-        }`}
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
       >
-        {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        <ChevronRight className="h-3 w-3" />
         {nonEmpty.length} field{nonEmpty.length !== 1 ? 's' : ''}
       </button>
-      {open && (
-        <div className="mt-2 space-y-3 rounded-lg border bg-muted/20 p-3">
-          {nonEmpty.map((key) => (
-            <DetailField key={key} label={formatKey(key)} value={record[key]} />
-          ))}
-        </div>
-      )}
-    </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md max-h-[70vh] overflow-y-auto" onClose={() => setOpen(false)}>
+          <DialogHeader>
+            <DialogTitle>Details</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4 space-y-3">
+            {nonEmpty.map((key) => (
+              <DetailField key={key} label={formatKey(key)} value={record[key]} />
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

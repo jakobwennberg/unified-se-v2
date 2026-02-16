@@ -252,11 +252,15 @@ function FormattedValue({ value }: { value: unknown }) {
     return <span>{value}</span>;
   }
   if (Array.isArray(value)) {
-    if (value.length === 0) return <span className="text-muted-foreground">[]</span>;
+    if (value.length === 0) return <span className="text-muted-foreground italic">Empty</span>;
+    // For simple arrays (strings, numbers), render inline as comma-separated
+    if (value.every((v) => typeof v === 'string' || typeof v === 'number')) {
+      return <span className="font-mono">{value.join(', ')}</span>;
+    }
     return (
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         {value.map((item, i) => (
-          <div key={i} className="rounded border bg-muted/30 px-2 py-1 text-xs">
+          <div key={i} className="rounded-md border bg-background px-2.5 py-1.5 text-xs">
             <FormattedValue value={item} />
           </div>
         ))}
@@ -264,16 +268,19 @@ function FormattedValue({ value }: { value: unknown }) {
     );
   }
   if (typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>);
+    const entries = Object.entries(value as Record<string, unknown>).filter(
+      ([, v]) => v !== null && v !== undefined,
+    );
+    if (entries.length === 0) return <span className="text-muted-foreground italic">Empty</span>;
     return (
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
+      <div className="inline-flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
         {entries.map(([k, v]) => (
-          <div key={k} className="contents">
-            <dt className="font-medium text-muted-foreground">{formatKey(k)}</dt>
-            <dd><FormattedValue value={v} /></dd>
-          </div>
+          <span key={k}>
+            <span className="font-medium text-muted-foreground">{formatKey(k)}: </span>
+            <FormattedValue value={v} />
+          </span>
         ))}
-      </dl>
+      </div>
     );
   }
   return <span>{String(value)}</span>;
@@ -382,21 +389,91 @@ function ExpandableDetails({ record, keys }: { record: Record<string, unknown>; 
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors ${
+          open
+            ? 'bg-primary/10 text-primary font-medium'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+        }`}
       >
         {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
         {nonEmpty.length} field{nonEmpty.length !== 1 ? 's' : ''}
       </button>
       {open && (
-        <div className="mt-1 space-y-1">
+        <div className="mt-2 space-y-3 rounded-lg border bg-muted/20 p-3">
           {nonEmpty.map((key) => (
-            <div key={key}>
-              <span className="text-xs font-medium text-muted-foreground">{formatKey(key)}: </span>
-              <FormattedValue value={record[key]} />
-            </div>
+            <DetailField key={key} label={formatKey(key)} value={record[key]} />
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function DetailField({ label, value }: { label: string; value: unknown }) {
+  // Array of objects → mini table
+  if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0] !== null) {
+    const items = value as Record<string, unknown>[];
+    const itemKeys = Array.from(new Set(items.flatMap((r) => Object.keys(r))));
+    const scalarItemKeys = itemKeys.filter((k) =>
+      items.some((r) => { const v = r[k]; return v !== null && v !== undefined && typeof v !== 'object'; }),
+    );
+
+    return (
+      <div>
+        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+        <div className="overflow-auto rounded-md border bg-background">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {scalarItemKeys.map((k) => (
+                  <TableHead key={k} className="text-[11px] h-8 whitespace-nowrap">{formatKey(k)}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((item, i) => (
+                <TableRow key={i}>
+                  {scalarItemKeys.map((k) => (
+                    <TableCell key={k} className="text-xs py-1.5">
+                      <FormattedValue value={item[k]} />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    );
+  }
+
+  // Plain object → key-value grid
+  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    const entries = Object.entries(value as Record<string, unknown>).filter(
+      ([, v]) => v !== null && v !== undefined,
+    );
+    return (
+      <div>
+        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+        <div className="rounded-md border bg-background">
+          <dl className="divide-y">
+            {entries.map(([k, v]) => (
+              <div key={k} className="flex items-baseline gap-3 px-3 py-1.5 text-xs">
+                <dt className="min-w-[100px] shrink-0 font-medium text-muted-foreground">{formatKey(k)}</dt>
+                <dd><FormattedValue value={v} /></dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </div>
+    );
+  }
+
+  // Simple array or scalar
+  return (
+    <div className="flex items-baseline gap-3 text-xs">
+      <span className="min-w-[100px] shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span><FormattedValue value={value} /></span>
     </div>
   );
 }
@@ -484,10 +561,10 @@ export function ResourceBrowser({ api, consentId, provider }: ResourceBrowserPro
         <select
           value={resourceType}
           onChange={(e) => handleResourceChange(e.target.value)}
-          className="rounded-md border px-3 py-2 text-sm"
+          className="rounded-md border bg-background text-foreground px-3 py-2 text-sm"
         >
           {resourceTypes.map((rt) => (
-            <option key={rt.value} value={rt.value}>
+            <option key={rt.value} value={rt.value} className="bg-background text-foreground">
               {rt.label}
             </option>
           ))}
@@ -536,14 +613,14 @@ export function ResourceBrowser({ api, consentId, provider }: ResourceBrowserPro
               <button
                 onClick={() => handlePageChange(Math.max(1, page - 1))}
                 disabled={page <= 1}
-                className="rounded-md border px-3 py-1.5 text-sm disabled:opacity-50"
+                className="rounded-md border bg-background text-foreground px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
               >
                 Previous
               </button>
               <button
                 onClick={() => handlePageChange(page + 1)}
                 disabled={!data.hasMore}
-                className="rounded-md border px-3 py-1.5 text-sm disabled:opacity-50"
+                className="rounded-md border bg-background text-foreground px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
               >
                 Next
               </button>

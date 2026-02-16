@@ -96,3 +96,22 @@ export interface SIEKPIs {
   daysInPeriod: number;
   isPartialYear: boolean;
 }
+
+/** A single month's KPI snapshot. */
+export interface MonthlyKPIEntry {
+  /** Calendar month in "YYYY-MM" format. */
+  month: string;
+  kpis: SIEKPIs;
+}
+
+/** Time-series of monthly KPI snapshots for a fiscal year. */
+export interface MonthlyKPISeries {
+  months: MonthlyKPIEntry[];
+  aggregate: SIEKPIs;
+  metadata: {
+    fiscalYearStart: string | null;
+    fiscalYearEnd: string | null;
+    monthCount: number;
+    source: 'sie-transactions' | 'journals';
+  };
+}

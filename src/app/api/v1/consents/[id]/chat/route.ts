@@ -7,6 +7,7 @@ import {
 } from 'ai';
 import { createAmazonBedrock } from '@ai-sdk/amazon-bedrock';
 import { authenticateRequest } from '@/lib/api/auth-middleware';
+import { checkAndIncrementAIUsage } from '@/lib/api/plan-limits';
 import { resolveConsent } from '@/lib/api/resolve-consent';
 import { createChatTools } from '@/lib/chat/tools';
 import { buildSystemPrompt } from '@/lib/chat/system-prompt';
@@ -45,6 +46,12 @@ export async function POST(
       { error: 'AI features are not configured (missing AWS credentials)' },
       { status: 503 },
     );
+  }
+
+  // Check AI usage limit
+  const aiCheck = await checkAndIncrementAIUsage(auth.tenantId);
+  if (!aiCheck.allowed) {
+    return NextResponse.json({ error: aiCheck.error }, { status: aiCheck.status });
   }
 
   // Parse messages from request body

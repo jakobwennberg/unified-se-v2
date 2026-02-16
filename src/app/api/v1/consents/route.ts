@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { authenticateRequest } from '@/lib/api/auth-middleware';
+import { checkConsentLimit } from '@/lib/api/plan-limits';
 import { randomUUID } from 'node:crypto';
 
 function getServiceClient() {
@@ -24,6 +25,11 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const auth = await authenticateRequest(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const consentCheck = await checkConsentLimit(auth.tenantId, auth.tenant.max_consents as number);
+  if (!consentCheck.allowed) {
+    return NextResponse.json({ error: consentCheck.error }, { status: consentCheck.status });
+  }
 
   const body = await request.json();
   const { name, provider, orgNumber, companyName, systemSettingsId } = body;

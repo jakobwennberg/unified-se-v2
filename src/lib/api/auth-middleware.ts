@@ -27,7 +27,7 @@ export async function authenticateRequest(request: Request): Promise<AuthResult 
       // Check api_keys table first
       const { data: keyRows } = await supabase
         .from('api_keys')
-        .select('tenant_id, tenants!inner(id, name, email, plan, rate_limit_per_minute, rate_limit_per_day, max_consents)')
+        .select('tenant_id, tenants!inner(id, name, email, plan, rate_limit_per_minute, rate_limit_per_day, max_consents, ai_requests_used, max_ai_requests)')
         .eq('key_hash', keyHash)
         .is('revoked_at', null)
         .limit(1);
@@ -41,7 +41,7 @@ export async function authenticateRequest(request: Request): Promise<AuthResult 
       // Fallback: check legacy api_key_hash on tenants table
       const { data: tenantRows } = await supabase
         .from('tenants')
-        .select('id, name, email, plan, rate_limit_per_minute, rate_limit_per_day, max_consents')
+        .select('id, name, email, plan, rate_limit_per_minute, rate_limit_per_day, max_consents, ai_requests_used, max_ai_requests')
         .eq('api_key_hash', keyHash)
         .limit(1);
 
@@ -80,7 +80,7 @@ export async function authenticateRequest(request: Request): Promise<AuthResult 
 
     const { data: tenantRows } = await serviceClient
       .from('tenants')
-      .select('id, name, email, plan, rate_limit_per_minute, rate_limit_per_day, max_consents')
+      .select('id, name, email, plan, rate_limit_per_minute, rate_limit_per_day, max_consents, ai_requests_used, max_ai_requests')
       .eq('auth_user_id', user.id)
       .limit(1);
 

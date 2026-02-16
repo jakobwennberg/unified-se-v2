@@ -6,10 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { BalanceComposition } from '@/components/charts/balance-composition';
 import { MarginBars } from '@/components/charts/margin-bars';
 import { LiquidityGauge } from '@/components/charts/liquidity-gauge';
 import { CapitalDonut } from '@/components/charts/capital-donut';
+import { KPITrend } from '@/components/charts/kpi-trend';
+import type { MonthlyKPISeries, MonthlyKPIEntry } from '@/lib/sie/types';
 
 interface KPIMetadata {
   provider: string;
@@ -51,6 +54,17 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
   );
 }
 
+const MONTH_LABELS: Record<string, string> = {
+  '01': 'January', '02': 'February', '03': 'March', '04': 'April',
+  '05': 'May', '06': 'June', '07': 'July', '08': 'August',
+  '09': 'September', '10': 'October', '11': 'November', '12': 'December',
+};
+
+function formatMonthLabel(ym: string): string {
+  const [year, month] = ym.split('-');
+  return `${MONTH_LABELS[month!] ?? month} ${year}`;
+}
+
 export function KPIPanel({ consentId, provider }: KPIPanelProps) {
   const isManualSie = provider === 'manual-sie';
   const defaults = defaultDates();
@@ -62,6 +76,12 @@ export function KPIPanel({ consentId, provider }: KPIPanelProps) {
   const [startDate, setStartDate] = useState(defaults.startDate);
   const [endDate, setEndDate] = useState(defaults.endDate);
   const [detailsOpen, setDetailsOpen] = useState(true);
+
+  // Monthly state
+  const [monthlyData, setMonthlyData] = useState<MonthlyKPISeries | null>(null);
+  const [monthlyLoading, setMonthlyLoading] = useState(false);
+  const [monthlyError, setMonthlyError] = useState<string | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
 
   const fetchKpis = useCallback(async (start?: string, end?: string) => {
     setLoading(true);
@@ -90,6 +110,34 @@ export function KPIPanel({ consentId, provider }: KPIPanelProps) {
     }
   }, [consentId, isManualSie]);
 
+  const fetchMonthly = useCallback(async () => {
+    setMonthlyLoading(true);
+    setMonthlyError(null);
+
+    try {
+      const params = new URLSearchParams({ granularity: 'monthly' });
+      if (!isManualSie) {
+        params.set('startDate', startDate);
+        params.set('endDate', endDate);
+      }
+      const url = `/api/v1/consents/${consentId}/kpis?${params.toString()}`;
+
+      const res = await fetch(url);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Failed to load monthly KPIs (${res.status})`);
+      }
+
+      const json = await res.json();
+      setMonthlyData(json.data as MonthlyKPISeries);
+      setSelectedMonth(null);
+    } catch (err) {
+      setMonthlyError(err instanceof Error ? err.message : 'Failed to load monthly KPIs');
+    } finally {
+      setMonthlyLoading(false);
+    }
+  }, [consentId, isManualSie, startDate, endDate]);
+
   useEffect(() => {
     fetchKpis(startDate, endDate);
   }, [fetchKpis]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -97,6 +145,15 @@ export function KPIPanel({ consentId, provider }: KPIPanelProps) {
   const handleCompute = () => {
     fetchKpis(startDate, endDate);
   };
+
+  // Determine which KPIs to display in the main charts
+  const selectedMonthEntry: MonthlyKPIEntry | undefined =
+    selectedMonth && monthlyData
+      ? monthlyData.months.find((m) => m.month === selectedMonth)
+      : undefined;
+  const displayKpis: KPIValues | null = selectedMonthEntry
+    ? (selectedMonthEntry.kpis as unknown as KPIValues)
+    : kpis;
 
   if (loading) {
     return (
@@ -118,7 +175,7 @@ export function KPIPanel({ consentId, provider }: KPIPanelProps) {
     );
   }
 
-  if (!kpis) return null;
+  if (!displayKpis) return null;
 
   return (
     <div className="space-y-8">
@@ -207,10 +264,120 @@ export function KPIPanel({ consentId, provider }: KPIPanelProps) {
         </Card>
       )}
 
+      {/* ── Monthly Trends ── */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <SectionHeader>Monthly Trends</SectionHeader>
+          <div className="flex items-center gap-3">
+            {monthlyData && (
+              <Select
+                value={selectedMonth ?? ''}
+                onChange={(e) => setSelectedMonth(e.target.value || null)}
+                className="w-48"
+              >
+                <option value="">All months (aggregate)</option>
+                {monthlyData.months.map((m) => (
+                  <option key={m.month} value={m.month}>
+                    {formatMonthLabel(m.month)}
+                  </option>
+                ))}
+              </Select>
+            )}
+            {!monthlyData && (
+              <Button
+                onClick={fetchMonthly}
+                size="sm"
+                variant="secondary"
+                disabled={monthlyLoading}
+              >
+                {monthlyLoading ? 'Loading...' : 'Load Monthly Trends'}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {selectedMonth && (
+          <Badge variant="secondary">
+            Viewing: {formatMonthLabel(selectedMonth)}
+          </Badge>
+        )}
+
+        {monthlyError && (
+          <Card>
+            <CardContent className="py-3">
+              <p className="text-sm text-destructive">{monthlyError}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {monthlyData && (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold">Revenue & Profitability</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <KPITrend
+                  series={monthlyData.months}
+                  metrics={[
+                    { key: 'netSales', label: 'Net Sales', format: 'sek' },
+                    { key: 'ebitda', label: 'EBITDA', format: 'sek' },
+                    { key: 'netIncome', label: 'Net Income', format: 'sek' },
+                  ]}
+                />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold">Margins</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <KPITrend
+                  series={monthlyData.months}
+                  metrics={[
+                    { key: 'grossMargin', label: 'Gross', format: 'pct' },
+                    { key: 'operatingMargin', label: 'Operating', format: 'pct' },
+                    { key: 'netMargin', label: 'Net', format: 'pct' },
+                  ]}
+                />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold">Liquidity</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <KPITrend
+                  series={monthlyData.months}
+                  metrics={[
+                    { key: 'currentRatio', label: 'Current Ratio', format: 'ratio' },
+                    { key: 'quickRatio', label: 'Quick Ratio', format: 'ratio' },
+                  ]}
+                />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold">Balance Sheet</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <KPITrend
+                  series={monthlyData.months}
+                  metrics={[
+                    { key: 'totalAssets', label: 'Total Assets', format: 'sek' },
+                    { key: 'adjustedEquity', label: 'Adj. Equity', format: 'sek' },
+                  ]}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </section>
+
       {/* ── Executive Summary ── */}
       <section className="space-y-4">
         <SectionHeader>Executive Summary</SectionHeader>
-        <HeadlineStats kpis={kpis} />
+        <HeadlineStats kpis={displayKpis} />
       </section>
 
       {/* ── Profitability ── */}
@@ -222,7 +389,7 @@ export function KPIPanel({ consentId, provider }: KPIPanelProps) {
               <CardTitle className="text-sm font-semibold">Margins</CardTitle>
             </CardHeader>
             <CardContent>
-              <MarginBars kpis={kpis} />
+              <MarginBars kpis={displayKpis} />
             </CardContent>
           </Card>
           <Card>
@@ -236,7 +403,7 @@ export function KPIPanel({ consentId, provider }: KPIPanelProps) {
                   { label: 'Return on Equity (ROE)', key: 'roe' },
                   { label: 'Return on Capital Employed (ROCE)', key: 'roce' },
                 ].map(({ label, key }) => {
-                  const v = kpis[key];
+                  const v = displayKpis[key];
                   const val = typeof v === 'number' ? v : null;
                   const color = val == null ? 'text-muted-foreground' : val >= 0 ? 'text-green-400/70' : 'text-red-400/70';
                   return (
@@ -262,7 +429,7 @@ export function KPIPanel({ consentId, provider }: KPIPanelProps) {
             <CardTitle className="text-sm font-semibold">Balance Composition</CardTitle>
           </CardHeader>
           <CardContent>
-            <BalanceComposition kpis={kpis} />
+            <BalanceComposition kpis={displayKpis} />
           </CardContent>
         </Card>
         <div className="grid gap-4 lg:grid-cols-2">
@@ -271,7 +438,7 @@ export function KPIPanel({ consentId, provider }: KPIPanelProps) {
               <CardTitle className="text-sm font-semibold">Liquidity Ratios</CardTitle>
             </CardHeader>
             <CardContent>
-              <LiquidityGauge kpis={kpis} />
+              <LiquidityGauge kpis={displayKpis} />
             </CardContent>
           </Card>
           <Card>
@@ -279,7 +446,7 @@ export function KPIPanel({ consentId, provider }: KPIPanelProps) {
               <CardTitle className="text-sm font-semibold">Capital Structure</CardTitle>
             </CardHeader>
             <CardContent>
-              <CapitalDonut kpis={kpis} />
+              <CapitalDonut kpis={displayKpis} />
             </CardContent>
           </Card>
         </div>
@@ -298,7 +465,7 @@ export function KPIPanel({ consentId, provider }: KPIPanelProps) {
             {detailsOpen ? 'Collapse' : 'Expand'}
           </Button>
         </div>
-        {detailsOpen && <KPIDetailTables kpis={kpis} />}
+        {detailsOpen && <KPIDetailTables kpis={displayKpis} />}
       </section>
     </div>
   );

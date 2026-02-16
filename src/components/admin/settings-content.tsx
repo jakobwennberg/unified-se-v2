@@ -20,9 +20,9 @@ interface Tenant {
   name: string;
   email: string;
   plan: string;
-  rate_limit_per_minute: number;
-  rate_limit_per_day: number;
   max_consents: number;
+  ai_requests_used: number;
+  max_ai_requests: number;
 }
 
 interface Profile {
@@ -183,18 +183,14 @@ export function SettingsContent({ tenant }: SettingsContentProps) {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base font-semibold">Rate Limits</CardTitle>
-                <CardDescription>API rate limits for your current plan.</CardDescription>
+                <CardTitle className="text-base font-semibold">Usage Limits</CardTitle>
+                <CardDescription>Usage limits for your current plan.</CardDescription>
               </CardHeader>
               <CardContent>
                 <dl className="grid grid-cols-2 gap-6 text-sm">
                   <div className="space-y-1">
-                    <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Requests per minute</dt>
-                    <dd className="font-medium">{tenant.rate_limit_per_minute}</dd>
-                  </div>
-                  <div className="space-y-1">
-                    <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Requests per day</dt>
-                    <dd className="font-medium">{tenant.rate_limit_per_day.toLocaleString()}</dd>
+                    <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">AI chat messages</dt>
+                    <dd className="font-medium">{tenant.ai_requests_used} / {tenant.max_ai_requests}</dd>
                   </div>
                   <div className="space-y-1">
                     <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Max consents</dt>

@@ -33,11 +33,6 @@ export async function middleware(request: NextRequest) {
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
-  if (!user && request.nextUrl.pathname.startsWith('/api-keys')) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    return NextResponse.redirect(url);
-  }
   if (!user && request.nextUrl.pathname.startsWith('/consents')) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';

@@ -1,14 +1,13 @@
 import { Card, CardContent } from '@/components/ui/card';
-import { FileCheck, CheckCircle, Key, Zap } from 'lucide-react';
+import { FileCheck, CheckCircle, Zap } from 'lucide-react';
 
 interface StatsCardsProps {
   totalConsents: number;
   activeConsents: number;
-  apiKeyCount: number;
   plan: string;
 }
 
-export function StatsCards({ totalConsents, activeConsents, apiKeyCount, plan }: StatsCardsProps) {
+export function StatsCards({ totalConsents, activeConsents, plan }: StatsCardsProps) {
   const stats = [
     {
       title: 'Total Consents',
@@ -21,11 +20,6 @@ export function StatsCards({ totalConsents, activeConsents, apiKeyCount, plan }:
       icon: CheckCircle,
     },
     {
-      title: 'API Keys',
-      value: apiKeyCount,
-      icon: Key,
-    },
-    {
       title: 'Plan',
       value: plan.charAt(0).toUpperCase() + plan.slice(1),
       icon: Zap,
@@ -33,7 +27,7 @@ export function StatsCards({ totalConsents, activeConsents, apiKeyCount, plan }:
   ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {stats.map((stat) => (
         <Card key={stat.title} className="relative overflow-hidden">
           <CardContent className="p-5">

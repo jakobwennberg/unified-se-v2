@@ -7,13 +7,10 @@ interface ApiClient {
   delete(path: string): Promise<void>;
 }
 
-export function createApiClient(baseUrl: string, apiKey?: string): ApiClient {
+export function createApiClient(baseUrl: string): ApiClient {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  if (apiKey) {
-    headers['Authorization'] = `Bearer ${apiKey}`;
-  }
 
   return {
     baseUrl,

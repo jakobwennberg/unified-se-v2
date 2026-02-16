@@ -2,13 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, FileCheck, Key, Settings } from 'lucide-react';
+import { LayoutDashboard, FileCheck, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/consents', label: 'Consents', icon: FileCheck },
-  { href: '/api-keys', label: 'API Keys', icon: Key },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 

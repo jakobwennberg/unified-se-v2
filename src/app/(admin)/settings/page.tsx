@@ -30,9 +30,9 @@ export default async function SettingsPage() {
         name: tenant.name,
         email: tenant.email,
         plan: tenant.plan,
-        rate_limit_per_minute: tenant.rate_limit_per_minute,
-        rate_limit_per_day: tenant.rate_limit_per_day as number,
         max_consents: tenant.max_consents,
+        ai_requests_used: tenant.ai_requests_used ?? 0,
+        max_ai_requests: tenant.max_ai_requests ?? 10,
       }}
     />
   );

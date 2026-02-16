@@ -42,10 +42,9 @@ export default async function DashboardPage() {
   }
 
   // Fetch stats
-  const [consentsResult, activeResult, apiKeysResult, recentConsents] = await Promise.all([
+  const [consentsResult, activeResult, recentConsents] = await Promise.all([
     db.from('consents').select('*', { count: 'exact', head: true }).eq('tenant_id', tenant.id),
     db.from('consents').select('*', { count: 'exact', head: true }).eq('tenant_id', tenant.id).eq('status', 1),
-    db.from('api_keys').select('*', { count: 'exact', head: true }).eq('tenant_id', tenant.id).is('revoked_at', null),
     db.from('consents').select('*').eq('tenant_id', tenant.id).order('created_at', { ascending: false }).limit(5),
   ]);
 
@@ -61,7 +60,6 @@ export default async function DashboardPage() {
       <StatsCards
         totalConsents={consentsResult.count ?? 0}
         activeConsents={activeResult.count ?? 0}
-        apiKeyCount={apiKeysResult.count ?? 0}
         plan={tenant.plan}
       />
 

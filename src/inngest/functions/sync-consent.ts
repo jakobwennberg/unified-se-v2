@@ -46,7 +46,7 @@ export const syncConsentFunction = inngest.createFunction(
     });
 
     const resourceTypes = requestedTypes ?? getSupportedResourceTypes(provider);
-    const syncBatchId = crypto.randomUUID();
+    const syncBatchId = await step.run('generate-batch-id', () => crypto.randomUUID());
     const results: { resourceType: string; status: string; recordsSynced: number }[] = [];
 
     for (const resourceType of resourceTypes) {

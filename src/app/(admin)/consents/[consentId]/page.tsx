@@ -103,7 +103,7 @@ function SyncOverlay({ consentId }: { consentId: string }) {
       } catch { /* ignore */ }
     };
     poll();
-    const id = setInterval(poll, 30000);
+    const id = setInterval(poll, 3000);
     return () => { active = false; clearInterval(id); };
   }, [consentId]);
 
@@ -187,6 +187,7 @@ export default function ConsentDetailPage() {
   const [loading, setLoading] = useState(true);
   const [revoking, setRevoking] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [hasSyncedData, setHasSyncedData] = useState(false);
 
   // Create API client that proxies through our route handler
   const apiClient = useMemo(
@@ -203,7 +204,7 @@ export default function ConsentDetailPage() {
     setLoading(false);
   }, [consentId]);
 
-  // Check sync status on mount, then poll every 3s only while syncing
+  // Check sync status on mount, then poll every 3s while syncing
   useEffect(() => {
     let active = true;
     const checkSync = async () => {
@@ -212,11 +213,14 @@ export default function ConsentDetailPage() {
         if (!res.ok || !active) return;
         const data: SyncStatusResponse = await res.json();
         setSyncing(data.overallStatus === 'syncing');
+        if (data.summary.completed > 0) {
+          setHasSyncedData(true);
+        }
       } catch { /* ignore */ }
     };
     checkSync();
-    if (!syncing) return () => { active = false; };
-    const id = setInterval(checkSync, 3000);
+    // Always poll — 3s while syncing, 30s otherwise (to detect background syncs)
+    const id = setInterval(checkSync, syncing ? 3000 : 30000);
     return () => { active = false; clearInterval(id); };
   }, [consentId, syncing]);
 
@@ -328,7 +332,7 @@ export default function ConsentDetailPage() {
               {consent.status === 1 && syncing ? (
                 <SyncOverlay consentId={consentId} />
               ) : consent.status === 1 ? (
-                <ResourceBrowser api={apiClient} consentId={consentId} provider={consent.provider!} />
+                <ResourceBrowser api={apiClient} consentId={consentId} provider={consent.provider!} useStoredData={hasSyncedData} />
               ) : (
                 <p className="text-sm text-muted-foreground">
                   Data Explorer is only available for accepted consents.

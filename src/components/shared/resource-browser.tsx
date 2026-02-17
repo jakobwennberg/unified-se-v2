@@ -31,6 +31,8 @@ export interface ResourceBrowserProps {
   api: ApiClient;
   consentId: string;
   provider?: string;
+  /** When true, reads from synced_resources (hydrated data) instead of live provider API */
+  useStoredData?: boolean;
 }
 
 // --- Structured renderers for manual-sie ---
@@ -482,7 +484,7 @@ function DetailField({ label, value }: { label: string; value: unknown }) {
 
 // --- Main component ---
 
-export function ResourceBrowser({ api, consentId, provider }: ResourceBrowserProps) {
+export function ResourceBrowser({ api, consentId, provider, useStoredData }: ResourceBrowserProps) {
   const isManualSie = provider === 'manual-sie';
   const resourceTypes = isManualSie ? MANUAL_SIE_RESOURCE_TYPES : RESOURCE_TYPES;
   const defaultType = isManualSie ? 'accountingaccounts' : 'salesinvoices';
@@ -498,8 +500,9 @@ export function ResourceBrowser({ api, consentId, provider }: ResourceBrowserPro
     setLoading(true);
     setError(null);
     try {
+      const sourceParam = useStoredData ? '&source=stored' : '';
       const result = await api.get<Record<string, unknown>>(
-        `/api/v1/consents/${consentId}/${rt}?page=${p}&pageSize=20`,
+        `/api/v1/consents/${consentId}/${rt}?page=${p}&pageSize=20${sourceParam}`,
       );
       // Normalize: singleton endpoints return { data: object } instead of { data: array, totalCount, ... }
       const rawData = result.data;

@@ -43,8 +43,11 @@ export async function middleware(request: NextRequest) {
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
-  // Redirect authenticated users away from auth pages
+  // Redirect authenticated users away from auth pages (but allow signup confirmation screen)
   if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup')) {
+    if (request.nextUrl.pathname === '/signup' && request.nextUrl.searchParams.has('confirm')) {
+      return supabaseResponse;
+    }
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
     return NextResponse.redirect(url);

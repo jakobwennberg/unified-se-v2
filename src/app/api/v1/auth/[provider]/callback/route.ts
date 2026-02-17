@@ -10,6 +10,8 @@ import { storeBokioToken } from '@/lib/providers/bokio/oauth';
 import { storeBjornLundenToken } from '@/lib/providers/bjornlunden/oauth';
 import { randomUUID } from 'node:crypto';
 import { inngest } from '@/inngest/client';
+import { getSupportedResourceTypes } from '@/lib/sync/fetch-all';
+import { updateSyncState } from '@/lib/sync/db';
 
 function getServiceClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -152,6 +154,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
     consentUpdate.provider = provider;
   }
   await supabase.from('consents').update(consentUpdate).eq('id', consentId);
+
+  // Pre-populate sync_state as 'syncing' so the dashboard shows the overlay immediately
+  const resourceTypes = getSupportedResourceTypes(provider);
+  await Promise.all(
+    resourceTypes.map((rt) =>
+      updateSyncState(consentId, rt, {
+        status: 'syncing',
+        started_at: now,
+        error_message: null,
+      }),
+    ),
+  );
 
   // Trigger initial sync via Inngest (async, durable)
   await inngest.send({

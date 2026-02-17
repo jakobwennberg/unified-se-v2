@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/api/auth-middleware';
 import { ResourceType } from '@/lib/types/dto';
-import { syncConsent } from '@/lib/sync/sync-engine';
 import { getSyncState } from '@/lib/sync/db';
+import { inngest } from '@/inngest/client';
 
 const VALID_RESOURCE_TYPES = new Set(Object.values(ResourceType));
 
@@ -39,17 +39,23 @@ export async function POST(
   }
 
   try {
-    const result = await syncConsent({
-      consentId,
-      tenantId: auth.tenantId,
-      resourceTypes,
+    const { ids } = await inngest.send({
+      name: 'arcim/sync.requested',
+      data: {
+        consentId,
+        tenantId: auth.tenantId,
+        resourceTypes,
+      },
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json(
+      { message: 'Sync started', eventId: ids[0], consentId },
+      { status: 202 },
+    );
   } catch (err: unknown) {
     const e = err as { status?: number; message?: string };
     return NextResponse.json(
-      { error: e.message ?? 'Sync failed' },
+      { error: e.message ?? 'Failed to start sync' },
       { status: e.status ?? 500 },
     );
   }

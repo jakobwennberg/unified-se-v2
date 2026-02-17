@@ -34,7 +34,7 @@ export class VismaClient {
 
   constructor(baseUrl?: string) {
     this.baseUrl = baseUrl ?? VISMA_BASE_URL;
-    this.rateLimiter = new TokenBucketRateLimiter(VISMA_RATE_LIMIT);
+    this.rateLimiter = new TokenBucketRateLimiter(VISMA_RATE_LIMIT, 'ratelimit:visma');
   }
 
   async get<T>(accessToken: string, path: string): Promise<T> {

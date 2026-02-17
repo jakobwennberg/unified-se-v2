@@ -36,7 +36,7 @@ export class BokioClient {
 
   constructor(baseUrl?: string) {
     this.baseUrl = baseUrl ?? BOKIO_BASE_URL;
-    this.rateLimiter = new TokenBucketRateLimiter(BOKIO_RATE_LIMIT);
+    this.rateLimiter = new TokenBucketRateLimiter(BOKIO_RATE_LIMIT, 'ratelimit:bokio');
   }
 
   async get<T>(accessToken: string, path: string): Promise<T> {

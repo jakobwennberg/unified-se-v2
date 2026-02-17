@@ -98,9 +98,14 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid file extension. Expected .se or .si' }, { status: 400 });
   }
 
-  // Read and parse the SIE file
+  // Read and validate file size
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
+
+  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+  if (buffer.length > MAX_FILE_SIZE) {
+    return NextResponse.json({ error: 'File too large (max 50 MB)' }, { status: 413 });
+  }
 
   let parsed;
   try {

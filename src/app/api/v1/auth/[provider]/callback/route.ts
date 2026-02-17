@@ -9,7 +9,7 @@ import { exchangeBrioxCode } from '@/lib/providers/briox/oauth';
 import { storeBokioToken } from '@/lib/providers/bokio/oauth';
 import { storeBjornLundenToken } from '@/lib/providers/bjornlunden/oauth';
 import { randomUUID } from 'node:crypto';
-import { syncConsent } from '@/lib/sync/sync-engine';
+import { inngest } from '@/inngest/client';
 
 function getServiceClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -153,12 +153,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
   }
   await supabase.from('consents').update(consentUpdate).eq('id', consentId);
 
-  // Trigger initial sync in background (fire-and-forget)
-  syncConsent({
-    consentId,
-    tenantId: consent.tenant_id,
-  }).catch((err) => {
-    console.error(`[sync] Background sync failed for consent ${consentId}:`, err);
+  // Trigger initial sync via Inngest (async, durable)
+  await inngest.send({
+    name: 'arcim/sync.requested',
+    data: {
+      consentId,
+      tenantId: consent.tenant_id,
+    },
   });
 
   return NextResponse.json({ success: true, consentId });

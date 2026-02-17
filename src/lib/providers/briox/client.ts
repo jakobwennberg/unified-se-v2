@@ -39,7 +39,7 @@ export class BrioxClient {
 
   constructor(baseUrl?: string) {
     this.baseUrl = baseUrl ?? BRIOX_BASE_URL;
-    this.rateLimiter = new TokenBucketRateLimiter(BRIOX_RATE_LIMIT);
+    this.rateLimiter = new TokenBucketRateLimiter(BRIOX_RATE_LIMIT, 'ratelimit:briox');
   }
 
   async get<T>(accessToken: string, path: string): Promise<T> {

@@ -36,7 +36,7 @@ export class BjornLundenClient {
 
   constructor(baseUrl?: string) {
     this.baseUrl = baseUrl ?? BL_BASE_URL;
-    this.rateLimiter = new TokenBucketRateLimiter(BL_RATE_LIMIT);
+    this.rateLimiter = new TokenBucketRateLimiter(BL_RATE_LIMIT, 'ratelimit:bjornlunden');
   }
 
   async get<T>(accessToken: string, userKey: string, path: string): Promise<T> {

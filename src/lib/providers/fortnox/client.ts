@@ -30,7 +30,7 @@ export class FortnoxClient {
 
   constructor(baseUrl?: string) {
     this.baseUrl = baseUrl ?? FORTNOX_BASE_URL;
-    this.rateLimiter = new TokenBucketRateLimiter(FORTNOX_RATE_LIMIT);
+    this.rateLimiter = new TokenBucketRateLimiter(FORTNOX_RATE_LIMIT, 'ratelimit:fortnox');
   }
 
   async get<T>(accessToken: string, path: string): Promise<T> {

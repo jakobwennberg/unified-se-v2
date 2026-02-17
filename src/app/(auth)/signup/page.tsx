@@ -1,17 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 
 export default function SignupPage() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,10 +30,47 @@ export default function SignupPage() {
       setError(error.message);
       setLoading(false);
     } else {
-      router.push('/dashboard');
-      router.refresh();
+      setEmailSent(true);
+      setLoading(false);
     }
   };
+
+  if (emailSent) {
+    return (
+      <div className="space-y-8" style={{ animation: 'fade-in 0.4s ease-out' }}>
+        <div className="text-center">
+          <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/15 ring-1 ring-primary/20">
+            <svg className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+            </svg>
+          </div>
+          <h1 className="font-serif text-2xl tracking-tight">Check your inbox</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            We sent a confirmation link to <span className="font-medium text-foreground">{email}</span>. Click the link to activate your account.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-border/60 bg-card p-6 shadow-[0_4px_24px_rgba(0,0,0,0.25)]">
+          <p className="text-center text-[13px] text-muted-foreground">
+            Didn&apos;t receive the email? Check your spam folder or{' '}
+            <button
+              onClick={() => setEmailSent(false)}
+              className="text-primary transition-colors hover:text-[#d4b455]"
+            >
+              try again
+            </button>
+          </p>
+        </div>
+
+        <p className="text-center text-[13px] text-muted-foreground">
+          Already confirmed?{' '}
+          <Link href="/login" className="text-primary transition-colors hover:text-[#d4b455]">
+            Sign in
+          </Link>
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8" style={{ animation: 'fade-in 0.4s ease-out' }}>
